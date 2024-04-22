@@ -12,6 +12,8 @@
   "dependencies": {
     "@tauri-apps/api": "^1",
     "naive-ui": "^2.38.1",
+    "path-browserify": "^1.0.1",
+    "tauri-plugin-fs-extra-api": "github:tauri-apps/tauri-plugin-fs-extra#v1",
     "vue": "^3.3.4"
   },
   "devDependencies": {
