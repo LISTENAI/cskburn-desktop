@@ -39,7 +39,7 @@
         正在解析
       </template>
     </n-spin>
-    <n-button :class="$style.footer" size="large" round type="primary" block>
+    <n-button size="large" round type="primary" block>
       开始烧录
     </n-button>
   </n-flex>

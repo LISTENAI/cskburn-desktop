@@ -1,4 +1,4 @@
 import { createApp } from 'vue';
-import App from './App.vue';
+import AppWindow from './AppWindow.vue';
 
-createApp(App).mount('#app');
+createApp(AppWindow).mount('#app');
