@@ -1,13 +1,14 @@
 <template>
-  <n-data-table :columns="columns" :data="props.partitions" flex-height size="small" :row-class-name="$style.rows" />
+  <n-data-table :columns="columns" :data flex-height size="small" :row-class-name="$style.rows">
+    <template #empty>
+      <component :is="slots.empty" />
+    </template>
+  </n-data-table>
 </template>
 
 <script lang="ts" setup>
-import { h } from 'vue';
-import {
-  NDataTable,
-  type DataTableColumns,
-} from 'naive-ui';
+import { computed, h, type Component } from 'vue';
+import { NDataTable, type DataTableColumns } from 'naive-ui';
 import type { IPartition } from '@/utils/images';
 
 import FieldName from './FieldName.vue';
@@ -18,32 +19,100 @@ const props = defineProps<{
   partitions: IPartition[];
 }>();
 
-const columns: DataTableColumns<IPartition> = [
+const slots = defineSlots<{
+  empty?: Component;
+  append?: Component;
+  actions?(props: { index: number, item: IPartition }): Component;
+}>();
+
+type IDataItem = {
+  type: 'partition';
+  partition: IPartition;
+} | {
+  type: 'footer';
+};
+
+const columns: DataTableColumns<IDataItem> = [
+  {
+    title: '#',
+    key: 'index',
+    align: 'right',
+    width: '3em',
+    colSpan(item, _index) {
+      return item.type == 'footer' ? columns.length : 1
+    },
+    render(item, index) {
+      if (item.type == 'partition') {
+        return index + 1;
+      } else if (slots.append) {
+        return h(slots.append);
+      }
+    },
+  },
   {
     title: '文件',
     key: 'name',
-    render: (item, _index) => h(FieldName, { path: item.path }),
+    render(item, _index) {
+      if (item.type == 'partition') {
+        return h(FieldName, { path: item.partition.path });
+      }
+    },
   },
   {
     title: '地址',
     key: 'addr',
     width: '8em',
-    render: (item, _index) => h(FieldAddr, { addr: item.addr }),
+    render(item, _index) {
+      if (item.type == 'partition') {
+        return h(FieldAddr, { addr: item.partition.addr });
+      }
+    },
   },
   {
     title: '大小',
     key: 'size',
     align: 'right',
     width: '8em',
-    render: (item, _index) => h(FieldSize, { size: item.size }),
+    render(item, _index) {
+      if (item.type == 'partition') {
+        return h(FieldSize, { size: item.partition.size });
+      }
+    },
   },
   {
     title: '进度',
     key: 'progress',
     align: 'right',
     width: '5em',
-  }
+  },
+  {
+    title: '',
+    key: 'actions',
+    align: 'right',
+    width: '8em',
+    render(item, index) {
+      if (item.type == 'partition' && slots.actions) {
+        return h(slots.actions, { index, item: item.partition });
+      }
+    },
+  },
 ];
+
+const data = computed(() => {
+  if (props.partitions.length === 0) {
+    return [];
+  } else {
+    return [
+      ...props.partitions.map((partition) => ({
+        type: 'partition',
+        partition,
+      })),
+      {
+        type: 'footer',
+      },
+    ];
+  }
+});
 </script>
 
 <style lang="scss" module>

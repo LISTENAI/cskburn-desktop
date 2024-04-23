@@ -12,6 +12,10 @@
   "tauri": {
     "allowlist": {
       "all": false,
+      "dialog": {
+        "all": false,
+        "open": true
+      },
       "fs": {
         "all": false,
         "readFile": true
@@ -25,7 +29,9 @@
       {
         "title": "cskburn desktop",
         "width": 800,
-        "height": 600
+        "height": 600,
+        "minWidth": 800,
+        "minHeight": 600
       }
     ],
     "security": {
