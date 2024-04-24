@@ -25,7 +25,7 @@
             </n-button>
           </template>
           <template #actions="{ index }">
-            <n-button quaternary circle size="small" @click="() => deletePartition(index)">
+            <n-button quaternary circle size="small" @click="() => handlePartRemove(index)">
               <template #icon>
                 <n-icon>
                   <delete-16-regular />
@@ -112,8 +112,10 @@ async function handleFilePick() {
   }
 }
 
-function deletePartition(index: number) {
+async function handlePartRemove(index: number) {
+  const file = partitions.value[index].file;
   partitions.value.splice(index, 1);
+  await file.free();
 }
 </script>
 

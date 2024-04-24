@@ -8,7 +8,6 @@ export default defineConfig(async () => ({
   resolve: {
     alias: {
       '@': resolve('./src'),
-      'path': 'path-browserify',
     },
   },
 

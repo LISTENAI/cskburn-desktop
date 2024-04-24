@@ -54,7 +54,7 @@ const columns: DataTableColumns<IDataItem> = [
     key: 'name',
     render(item, _index) {
       if (item.type == 'partition') {
-        return h(FieldName, { path: item.partition.path });
+        return h(FieldName, { name: item.partition.file.name });
       }
     },
   },
@@ -75,7 +75,7 @@ const columns: DataTableColumns<IDataItem> = [
     width: '8em',
     render(item, _index) {
       if (item.type == 'partition') {
-        return h(FieldSize, { size: item.partition.size });
+        return h(FieldSize, { size: item.partition.file.size });
       }
     },
   },

@@ -1,15 +1,13 @@
 <template>
   <field-base>
-    {{ basename(props.path) }}
+    {{ props.name }}
   </field-base>
 </template>
 
 <script lang="ts" setup>
-import { basename } from 'path';
-
 import FieldBase from './FieldBase.vue';
 
 const props = defineProps<{
-  path: string;
+  name: string;
 }>();
 </script>

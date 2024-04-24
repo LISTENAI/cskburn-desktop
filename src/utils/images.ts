@@ -1,9 +1,16 @@
 import { metadata } from 'tauri-plugin-fs-extra-api';
+import { basename } from '@tauri-apps/api/path';
 
 export interface IPartition {
   addr: number;
-  size: number;
+  file: IFileRef;
+}
+
+export interface IFileRef {
   path: string;
+  name: string;
+  size: number;
+  free: () => Promise<void>;
 }
 
 export async function processFiles(paths: string[]): Promise<IPartition[]> {
@@ -12,15 +19,27 @@ export async function processFiles(paths: string[]): Promise<IPartition[]> {
   for (const path of paths) {
     partitions.push({
       addr: 0,
-      size: await getFileSize(path),
-      path: path,
+      file: await LocalBinFile.from(path),
     });
   }
 
   return partitions;
 }
 
-async function getFileSize(path: string): Promise<number> {
-  const { size } = await metadata(path);
-  return size;
+class LocalBinFile implements IFileRef {
+  static async from(path: string): Promise<LocalBinFile> {
+    const name = await basename(path);
+    const { size } = await metadata(path);
+    return new LocalBinFile(path, name, size);
+  }
+
+  private constructor(
+    readonly path: string,
+    readonly name: string,
+    readonly size: number) {
+  }
+
+  async free(): Promise<void> {
+    // do nothing
+  }
 }
