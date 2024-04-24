@@ -19,6 +19,7 @@ tauri = { version = "1", features = [
   "fs-write-file",
   "path-all",
   "shell-open",
+  "shell-sidecar",
 ] }
 tauri-plugin-fs-extra = { git = "https://github.com/tauri-apps/plugins-workspace", branch = "v1" }
 serde = { version = "1", features = ["derive"] }

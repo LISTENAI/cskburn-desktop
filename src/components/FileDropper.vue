@@ -1,7 +1,7 @@
 <template>
   <n-element :class="$style.container">
     <slot />
-    <n-flex v-if="dropping" align="center" justify="center" :class="$style.dropping">
+    <n-flex v-if="!disabled && dropping" align="center" justify="center" :class="$style.dropping">
       <span>{{ props.hint || '将文件放置到此处' }}</span>
     </n-flex>
   </n-element>
@@ -15,6 +15,7 @@ import { useListen } from '@/composables/tauri/useListen';
 
 const props = defineProps<{
   hint?: string;
+  disabled?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -33,6 +34,7 @@ useListen(TauriEvent.WINDOW_FILE_DROP_CANCELLED, () => {
 
 useListen<string[]>(TauriEvent.WINDOW_FILE_DROP, (event) => {
   dropping.value = false;
+  if (props.disabled) return;
   emit('file-drop', event.payload);
 });
 </script>

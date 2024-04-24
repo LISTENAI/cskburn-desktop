@@ -1,18 +1,23 @@
 <template>
-  <n-data-table :columns="columns" :data flex-height size="small" />
+  <n-element>
+    <n-data-table :columns="columns" :data flex-height size="small" :style="{ height: '100%' }" />
+  </n-element>
 </template>
 
 <script lang="ts" setup>
 import { computed, h, type Component } from 'vue';
-import { NDataTable, type DataTableColumns } from 'naive-ui';
+import { NDataTable, NElement, type DataTableColumns } from 'naive-ui';
 import type { IPartition } from '@/utils/images';
 
 import FieldName from './FieldName.vue';
 import FieldAddr from './FieldAddr.vue';
 import FieldSize from './FieldSize.vue';
+import FieldProgress from './FieldProgress.vue';
 
 const props = defineProps<{
   partitions: IPartition[];
+  currentIndex: number | null;
+  currentProgress: number | null;
 }>();
 
 const slots = defineSlots<{
@@ -78,13 +83,30 @@ const columns: DataTableColumns<IDataItem> = [
     title: '进度',
     key: 'progress',
     align: 'right',
-    width: '5em',
+    width: '6em',
+    render(item, index) {
+      if (item.type != 'partition') {
+        return undefined;
+      }
+
+      if (props.currentIndex == null
+        || props.currentProgress == null
+        || props.currentIndex < index) {
+        return '未开始';
+      } else if (props.currentIndex == index) {
+        return h(FieldProgress, { progress: props.currentProgress });
+      } else if (props.currentIndex > index) {
+        return h(FieldProgress, { progress: 1.0 });
+      } else {
+        return undefined;
+      }
+    },
   },
   {
     title: '',
     key: 'actions',
     align: 'right',
-    width: '8em',
+    width: '4em',
     render(item, index) {
       if (item.type == 'partition' && slots.actions) {
         return h(slots.actions, { index, item: item.partition });
