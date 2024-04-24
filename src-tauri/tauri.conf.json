@@ -18,7 +18,17 @@
       },
       "fs": {
         "all": false,
-        "readFile": true
+        "readFile": true,
+        "writeFile": true,
+        "removeFile": true,
+        "createDir": true,
+        "scope": [
+          "$APPCACHE/lpk_unpack",
+          "$APPCACHE/lpk_unpack/*"
+        ]
+      },
+      "path": {
+        "all": true
       },
       "shell": {
         "all": false,

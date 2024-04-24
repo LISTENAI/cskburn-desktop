@@ -1,6 +1,8 @@
 import { metadata } from 'tauri-plugin-fs-extra-api';
 import { basename } from '@tauri-apps/api/path';
 
+import { readLpk } from './readLpk';
+
 export interface IPartition {
   addr: number;
   file: IFileRef;
@@ -17,10 +19,14 @@ export async function processFiles(paths: string[]): Promise<IPartition[]> {
   const partitions: IPartition[] = [];
 
   for (const path of paths) {
-    partitions.push({
-      addr: 0,
-      file: await LocalBinFile.from(path),
-    });
+    if (path.toLowerCase().endsWith('.lpk')) {
+      partitions.push(...await readLpk(path));
+    } else {
+      partitions.push({
+        addr: 0,
+        file: await LocalBinFile.from(path),
+      });
+    }
   }
 
   return partitions;
