@@ -1,21 +1,43 @@
 <template>
-  <n-flex vertical :class="$style.container" :size="16">
-    <n-select :class="$style.port" v-model:value="selectedPort" :options="availableSelections" placeholder="选择一个串口设备" />
-    <n-spin :class="$style.partitions" :content-class="$style.fullHeight" :show="parsing" :delay="200">
-      <file-dropper @file-drop="handleFiles" :class="$style.fullHeight">
-        <partition-list :class="$style.fullHeight" :partitions>
-          <template #empty>
+  <n-flex vertical :size="16" :style="{
+    boxSizing: 'border-box',
+    height: '100vh',
+    padding: '16px'
+  }">
+    <n-flex align="center">
+      <div>端口:</div>
+      <n-select v-model:value="selectedPort" :options="availableSelections" :consistent-menu-width="false"
+        :disabled="availableSelections.length == 0" placeholder="空" :class="$style.port"
+        :style="{ flex: '0 1 300px' }" />
+    </n-flex>
+
+    <n-flex :size="32" align="center">
+      <div>CHIP ID: <span :class="$style.selectable">N/A</span></div>
+      <div>Flash ID: <span :class="$style.selectable">N/A</span></div>
+      <n-button secondary round size="small" :disabled="status == 'busy'">获取</n-button>
+    </n-flex>
+
+    <n-spin :show="parsing" :delay="200" :style="{ flex: '1 1 auto' }" :content-style="{ height: '100%' }">
+      <file-dropper @file-drop="handleFiles" :style="{ height: '100%' }">
+        <n-element v-if="partitions.length == 0" :style="{
+          height: '100%',
+          border: '1px solid var(--border-color)',
+          borderRadius: 'var(--border-radius)',
+        }">
+          <n-flex align="center" justify="center" :style="{ height: '100%' }">
             <n-button quaternary round size="large" @click="handleFilePick">
-              点击选择或将固件拖放至此
+              点击选择或将固件拖放到此处
               <template #icon>
                 <n-icon>
                   <add-12-regular />
                 </n-icon>
               </template>
             </n-button>
-          </template>
+          </n-flex>
+        </n-element>
+        <partition-list v-else :partitions :style="{ height: '100%' }">
           <template #append>
-            <n-button text block @click="handleFilePick">
+            <n-button text block :disabled="status == 'busy'" @click="handleFilePick">
               点击或拖放添加更多固件
               <template #icon>
                 <n-icon>
@@ -25,7 +47,8 @@
             </n-button>
           </template>
           <template #actions="{ index }">
-            <n-button quaternary circle size="small" @click="() => handlePartRemove(index)">
+            <n-button quaternary circle size="small" :disabled="status == 'busy'"
+              @click="() => handlePartRemove(index)">
               <template #icon>
                 <n-icon>
                   <delete-16-regular />
@@ -39,9 +62,35 @@
         正在解析
       </template>
     </n-spin>
-    <n-button size="large" round type="primary" block>
-      开始烧录
-    </n-button>
+
+    <n-flex align="center" :size="32">
+      <n-flex :style="{ width: 'auto', flex: '1 1 auto' }">
+        <template v-if="status == 'busy'">
+          <n-progress type="line" :percentage="progress" />
+        </template>
+        <template v-else-if="status == 'success'">
+          <n-element :class="$style.result" :style="{ color: 'var(--success-color)' }">
+            烧录成功
+          </n-element>
+        </template>
+        <template v-else-if="status == 'error'">
+          <n-element :class="$style.result" :style="{ color: 'var(--error-color)' }">
+            烧录异常
+          </n-element>
+          <n-button secondary round size="small">
+            查看日志
+          </n-button>
+        </template>
+      </n-flex>
+
+      <n-button v-if="status == 'busy'" size="large" :style="{ flex: '0 0 140px' }" @click="stopFlash">
+        停止
+      </n-button>
+      <n-button v-else size="large" type="primary" :disabled="selectedPort == null || partitions.length == 0"
+        :style="{ flex: '0 0 140px' }" @click="startFlash">
+        开始烧录
+      </n-button>
+    </n-flex>
   </n-flex>
 </template>
 
@@ -49,8 +98,10 @@
 import { computed, ref, useCssModule, watch } from 'vue';
 import {
   NButton,
+  NElement,
   NFlex,
   NIcon,
+  NProgress,
   NSelect,
   NSpin,
   type SelectOption,
@@ -117,6 +168,15 @@ async function handlePartRemove(index: number) {
   partitions.value.splice(index, 1);
   await file.free();
 }
+
+const status = ref<null | 'busy' | 'success' | 'error'>(null);
+const progress = ref(0);
+
+function startFlash() {
+}
+
+function stopFlash() {
+}
 </script>
 
 <style lang="scss" module>
@@ -124,21 +184,17 @@ async function handlePartRemove(index: number) {
   user-select: none;
 }
 
-.container {
-  box-sizing: border-box;
-  height: 100vh;
-  padding: 16px;
-}
-
 .port {
   font-family: monospace;
 }
 
-.partitions {
-  flex: 1 1 auto;
+.selectable {
+  user-select: text;
 }
 
-.fullHeight {
-  height: 100%;
+.result {
+  font-size: 1.2em;
+  font-weight: bold;
+  margin-left: 8px;
 }
 </style>

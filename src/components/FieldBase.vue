@@ -1,11 +1,11 @@
 <template>
   <n-flex :class="$style.field" :size="8" align="center">
-    <span :class="{
+    <n-element :class="{
       [$style.value]: true,
       [$style.noselect]: props.noSelect === true,
     }">
       <slot />
-    </span>
+    </n-element>
     <template v-for="button in (props.buttons || [])">
       <n-button :class="$style.button" size="small" quaternary circle @click="button.onClick">
         <template #icon>
@@ -22,6 +22,7 @@
 import type { Component } from 'vue';
 import {
   NButton,
+  NElement,
   NFlex,
   NIcon,
 } from 'naive-ui';
@@ -54,7 +55,7 @@ const props = defineProps<{
 
 .value {
   flex: 1 1;
-  font-family: monospace;
+  font-family: var(--font-family-mono);
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;

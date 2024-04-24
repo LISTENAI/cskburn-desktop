@@ -1,9 +1,5 @@
 <template>
-  <n-data-table :columns="columns" :data flex-height size="small" :row-class-name="$style.rows">
-    <template #empty>
-      <component :is="slots.empty" />
-    </template>
-  </n-data-table>
+  <n-data-table :columns="columns" :data flex-height size="small" />
 </template>
 
 <script lang="ts" setup>
@@ -20,7 +16,6 @@ const props = defineProps<{
 }>();
 
 const slots = defineSlots<{
-  empty?: Component;
   append?: Component;
   actions?(props: { index: number, item: IPartition }): Component;
 }>();
@@ -114,9 +109,3 @@ const data = computed(() => {
   }
 });
 </script>
-
-<style lang="scss" module>
-.rows {
-  font-family: monospace;
-}
-</style>
