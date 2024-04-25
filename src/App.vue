@@ -38,7 +38,7 @@
             </n-button>
           </n-flex>
         </n-element>
-        <partition-list v-else :partitions :current-index :current-progress :style="{ height: '100%' }">
+        <partition-list v-else :partitions :style="{ height: '100%' }">
           <template #footer>
             <n-button text block :disabled="status == 'flashing'" @click="handleFilePick">
               点击或拖放添加更多固件
@@ -49,7 +49,30 @@
               </template>
             </n-button>
           </template>
-          <template #actions="{ index }">
+          <template #column-index="{ index }">
+            {{ index + 1 }}
+          </template>
+          <template #column-name="{ data }">
+            <field-name :name="data.file.name" />
+          </template>
+          <template #column-addr="{ data }">
+            <field-addr :addr="data.addr" />
+          </template>
+          <template #column-size="{ data }">
+            <field-size :size="data.file.size" />
+          </template>
+          <template #column-progress="{ index }">
+            <template v-if="currentIndex == null || currentProgress == null || currentIndex < index">
+              未开始
+            </template>
+            <template v-else-if="currentIndex == index">
+              <field-progress :progress="currentProgress" />
+            </template>
+            <template v-else-if="currentIndex > index">
+              <field-progress :progress="1" />
+            </template>
+          </template>
+          <template #column-actions="{ index }">
             <n-button quaternary circle size="small" :disabled="status == 'flashing'"
               @click="() => handlePartRemove(index)">
               <template #icon>
@@ -123,6 +146,11 @@ import { useIntervally } from '@/composables/window/useIntervally';
 
 import FileDropper from '@/components/FileDropper.vue';
 import PartitionList from '@/components/PartitionList.vue';
+
+import FieldName from '@/components/FieldName.vue';
+import FieldAddr from '@/components/FieldAddr.vue';
+import FieldSize from '@/components/FieldSize.vue';
+import FieldProgress from '@/components/FieldProgress.vue';
 
 const $style = useCssModule();
 
