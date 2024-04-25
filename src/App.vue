@@ -18,6 +18,9 @@
     </n-flex>
 
     <n-spin :show="parsing" :delay="200" :style="{ flex: '1 1 auto' }" :content-style="{ height: '100%' }">
+      <template #description>
+        正在解析
+      </template>
       <file-dropper :disabled="status == 'flashing'" :style="{ height: '100%' }" @file-drop="handleFiles">
         <n-element v-if="partitions.length == 0" :style="{
           height: '100%',
@@ -58,15 +61,12 @@
           </template>
         </partition-list>
       </file-dropper>
-      <template #description>
-        正在解析
-      </template>
     </n-spin>
 
     <n-flex align="center" :size="32">
       <n-flex :style="{ width: 'auto', flex: '1 1 auto' }">
         <template v-if="status == 'flashing'">
-          <n-progress type="line" :percentage="progress" />
+          <n-progress type="line" :percentage="progress" :show-indicator="false" />
         </template>
         <template v-else-if="status == 'success'">
           <n-element :class="$style.result" :style="{ color: 'var(--success-color)' }">
@@ -195,7 +195,21 @@ const output = ref('');
 const currentIndex = ref<number | null>(null);
 const currentProgress = ref<number | null>(null);
 
-const progress = ref(0);
+const progress = computed(() => {
+  if (currentIndex.value == null || currentProgress.value == null) {
+    return 0;
+  }
+
+  function totalSizeOf(parts: IPartition[]) {
+    return parts.reduce((acc, part) => acc + part.file.size, 0);
+  }
+
+  const total = totalSizeOf(partitions.value);
+  const wrote = totalSizeOf(partitions.value.slice(0, currentIndex.value));
+  const current = partitions.value[currentIndex.value].file.size * currentProgress.value;
+
+  return (wrote + current) / total * 100;
+});
 
 let aborter: AbortController | undefined;
 
@@ -207,6 +221,8 @@ async function startFlash() {
 
   aborter = new AbortController();
 
+  currentIndex.value = null;
+  currentProgress.value = null;
   status.value = 'flashing';
 
   const result = await cskburn(selectedPort.value!, 1500000, args, {
