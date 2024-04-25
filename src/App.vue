@@ -39,7 +39,7 @@
           </n-flex>
         </n-element>
         <partition-list v-else :partitions :current-index :current-progress :style="{ height: '100%' }">
-          <template #append>
+          <template #footer>
             <n-button text block :disabled="status == 'flashing'" @click="handleFilePick">
               点击或拖放添加更多固件
               <template #icon>

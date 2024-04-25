@@ -1,13 +1,20 @@
 <template>
   <n-element>
-    <n-data-table :columns="columns" :data flex-height size="small" :style="{ height: '100%' }" />
+    <data-table-with-footer :columns="columns" :data="props.partitions" flex-height size="small"
+      :style="{ height: '100%' }">
+      <template #footer>
+        <component v-if="props.partitions.length > 0" :is="slots.footer" />
+      </template>
+    </data-table-with-footer>
   </n-element>
 </template>
 
 <script lang="ts" setup>
-import { computed, h, type Component } from 'vue';
-import { NDataTable, NElement, type DataTableColumns } from 'naive-ui';
+import { h, type Component } from 'vue';
+import { NElement, type DataTableColumns } from 'naive-ui';
 import type { IPartition } from '@/utils/images';
+
+import DataTableWithFooter from '@/components/DataTableWithFooter.vue';
 
 import FieldName from './FieldName.vue';
 import FieldAddr from './FieldAddr.vue';
@@ -25,37 +32,21 @@ const slots = defineSlots<{
   actions?(props: { index: number, item: IPartition }): Component;
 }>();
 
-type IDataItem = {
-  type: 'partition';
-  partition: IPartition;
-} | {
-  type: 'footer';
-};
-
-const columns: DataTableColumns<IDataItem> = [
+const columns: DataTableColumns<IPartition> = [
   {
     title: '#',
     key: 'index',
     align: 'right',
     width: '3em',
-    colSpan(item, _index) {
-      return item.type == 'footer' ? columns.length : 1
-    },
-    render(item, index) {
-      if (item.type == 'partition') {
-        return index + 1;
-      } else if (slots.append) {
-        return h(slots.append);
-      }
+    render(_item, index) {
+      return index + 1;
     },
   },
   {
     title: '文件',
     key: 'name',
     render(item, _index) {
-      if (item.type == 'partition') {
-        return h(FieldName, { name: item.partition.file.name });
-      }
+      return h(FieldName, { name: item.file.name });
     },
   },
   {
@@ -63,9 +54,7 @@ const columns: DataTableColumns<IDataItem> = [
     key: 'addr',
     width: '8em',
     render(item, _index) {
-      if (item.type == 'partition') {
-        return h(FieldAddr, { addr: item.partition.addr });
-      }
+      return h(FieldAddr, { addr: item.addr });
     },
   },
   {
@@ -74,9 +63,7 @@ const columns: DataTableColumns<IDataItem> = [
     align: 'right',
     width: '8em',
     render(item, _index) {
-      if (item.type == 'partition') {
-        return h(FieldSize, { size: item.partition.file.size });
-      }
+      return h(FieldSize, { size: item.file.size });
     },
   },
   {
@@ -84,11 +71,7 @@ const columns: DataTableColumns<IDataItem> = [
     key: 'progress',
     align: 'right',
     width: '6em',
-    render(item, index) {
-      if (item.type != 'partition') {
-        return undefined;
-      }
-
+    render(_item, index) {
       if (props.currentIndex == null
         || props.currentProgress == null
         || props.currentIndex < index) {
@@ -108,26 +91,10 @@ const columns: DataTableColumns<IDataItem> = [
     align: 'right',
     width: '4em',
     render(item, index) {
-      if (item.type == 'partition' && slots.actions) {
-        return h(slots.actions, { index, item: item.partition });
+      if (slots.actions) {
+        return h(slots.actions, { index, item });
       }
     },
   },
 ];
-
-const data = computed(() => {
-  if (props.partitions.length === 0) {
-    return [];
-  } else {
-    return [
-      ...props.partitions.map((partition) => ({
-        type: 'partition',
-        partition,
-      })),
-      {
-        type: 'footer',
-      },
-    ];
-  }
-});
 </script>
