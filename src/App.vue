@@ -77,7 +77,7 @@
           <n-element :class="$style.result" :style="{ color: 'var(--error-color)' }">
             烧录异常
           </n-element>
-          <n-button secondary round size="small">
+          <n-button secondary round size="small" @click="() => outputShown = !outputShown">
             查看日志
           </n-button>
         </template>
@@ -91,6 +91,9 @@
         开始烧录
       </n-button>
     </n-flex>
+
+    <n-input type="textarea" v-if="outputShown" :value="output" placeholder="" readonly :resizable="false"
+      :style="{ height: '200px', fontFamily: 'monospace' }" />
   </n-flex>
 </template>
 
@@ -104,6 +107,7 @@ import {
   NProgress,
   NSelect,
   NSpin,
+  NInput,
   type SelectOption,
 } from 'naive-ui';
 import {
@@ -192,6 +196,8 @@ async function fetchInfo() {
 }
 
 const output = ref('');
+const outputShown = ref(false);
+
 const currentIndex = ref<number | null>(null);
 const currentProgress = ref<number | null>(null);
 
@@ -223,6 +229,7 @@ async function startFlash() {
 
   currentIndex.value = null;
   currentProgress.value = null;
+  outputShown.value = false;
   status.value = 'flashing';
 
   const result = await cskburn(selectedPort.value!, 1500000, args, {
