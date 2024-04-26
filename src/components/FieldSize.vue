@@ -1,5 +1,5 @@
 <template>
-  <field-base :class="$style.size" no-select @click="switchUnit">
+  <field-base :class="$style.size" @click="switchUnit">
     {{ unit == 0 ? value : value.toFixed(2) }} {{ UNIT[unit] }}
   </field-base>
 </template>
@@ -24,7 +24,6 @@ const switchUnit = () => {
 
 <style lang="scss" module>
 .size {
-  user-select: none;
   cursor: pointer;
 }
 </style>

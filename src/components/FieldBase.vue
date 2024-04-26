@@ -1,10 +1,9 @@
 <template>
   <n-flex :class="$style.field" :size="8" align="center">
-    <n-element :class="{
-      [$style.value]: true,
-      [$style.noselect]: props.noSelect === true,
-    }">
-      <slot />
+    <n-element :class="$style.value">
+      <span :class="{ [$style.selectable]: props.selectable }">
+        <slot />
+      </span>
     </n-element>
     <template v-for="button in (props.buttons || [])">
       <n-button :class="$style.button" size="small" quaternary circle @click="button.onClick">
@@ -35,7 +34,7 @@ export interface FieldButtonOption {
 
 const props = defineProps<{
   buttons?: FieldButtonOption[];
-  noSelect?: boolean;
+  selectable?: boolean;
 }>();
 </script>
 
@@ -54,15 +53,14 @@ const props = defineProps<{
 }
 
 .value {
-  flex: 1 1;
+  flex: 1 1 auto;
   font-family: var(--font-family-mono);
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
-  user-select: text;
 }
 
-.noselect {
-  user-select: none;
+.selectable {
+  user-select: text;
 }
 </style>

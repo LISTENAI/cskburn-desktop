@@ -1,5 +1,5 @@
 <template>
-  <field-base>
+  <field-base selectable>
     0x{{ props.addr.toString(16).padStart(8, '0') }}
   </field-base>
 </template>
