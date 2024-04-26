@@ -38,7 +38,7 @@ const columns: DataTableColumns<IPartition> = [
   {
     title: '地址',
     key: 'addr',
-    width: '8em',
+    width: '10em',
   },
   {
     title: '大小',

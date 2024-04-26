@@ -56,7 +56,7 @@
             <field-base selectable>{{ data.file.name }}</field-base>
           </template>
           <template #column-addr="{ data }">
-            <field-addr :addr="data.addr" />
+            <field-addr v-model:addr="data.addr" :disabled="busyForFlash" />
           </template>
           <template #column-size="{ data }">
             <field-size :size="data.file.size" />
@@ -299,11 +299,15 @@ async function startFlash() {
       currentIndex.value = index;
       currentProgress.value = progress;
     },
+    onError(_error) {
+      status.value = FlashStatus.ERROR;
+    },
   });
 
-  // @ts-ignore - status was changed in `stopFlash`
-  if (status.value != FlashStatus.STOPPED) {
-    output.value = result.output;
+  output.value = result.output;
+
+  // Only update status if status is not updated during flash
+  if (busyForFlash.value) {
     status.value = result.code == 0 ? FlashStatus.SUCCESS : FlashStatus.ERROR;
   }
 }
