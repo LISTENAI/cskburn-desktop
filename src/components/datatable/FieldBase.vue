@@ -1,9 +1,9 @@
 <template>
   <n-flex :class="$style.field" :size="8" align="center">
     <n-element :class="$style.value">
-      <span :class="{ [$style.selectable]: props.selectable }">
+      <selectable-text :selectable="props.selectable">
         <slot />
-      </span>
+      </selectable-text>
     </n-element>
     <template v-for="button in (props.buttons || [])">
       <n-button :class="$style.button" size="small" quaternary circle @click="button.onClick">
@@ -25,6 +25,8 @@ import {
   NFlex,
   NIcon,
 } from 'naive-ui';
+
+import SelectableText from '@/components/common/SelectableText.vue';
 
 export interface FieldButtonOption {
   icon: Component;
@@ -58,9 +60,5 @@ const props = defineProps<{
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
-}
-
-.selectable {
-  user-select: text;
 }
 </style>

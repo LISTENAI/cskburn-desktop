@@ -6,15 +6,21 @@
   }">
     <n-flex align="center">
       <div>端口:</div>
-      <n-select v-model:value="selectedPort" :options="availableSelections" :consistent-menu-width="false"
-        :disabled="availableSelections.length == 0 || busyForInfo || busyForFlash" placeholder="空" :class="$style.port"
+      <port-selector v-model:port="selectedPort" :disabled="busyForInfo || busyForFlash"
         :style="{ flex: '0 1 300px' }" />
     </n-flex>
 
-    <n-flex :size="32" align="center">
-      <div>CHIP ID: <span :class="$style.selectable">{{ chipId }}</span></div>
-      <div>Flash ID: <span :class="$style.selectable">{{ flashId }}</span></div>
-      <n-button secondary round size="small" :disabled="busyForInfo || busyForFlash" @click="fetchInfo">获取</n-button>
+    <n-flex align="center" :style="{ fontFamily: 'monospace' }">
+      <div :style="{ width: '16em' }">
+        Chip ID: <selectable-text selectable>{{ chipId || 'N/A' }}</selectable-text>
+      </div>
+      <div :style="{ width: '16em' }">
+        Flash ID: <selectable-text selectable>{{ flashInfo || 'N/A' }}</selectable-text>
+      </div>
+      <n-button secondary size="small" :disabled="selectedPort == null || busyForFlash" :loading="busyForInfo"
+        @click="fetchInfo">
+        获取
+      </n-button>
     </n-flex>
 
     <n-spin :show="parsing" :delay="200" :style="{ flex: '1 1 auto' }" :content-style="{ height: '100%' }">
@@ -22,22 +28,7 @@
         正在解析
       </template>
       <file-dropper :disabled="busyForFlash" :style="{ height: '100%' }" @file-drop="handleFiles">
-        <n-element v-if="partitions.length == 0" :style="{
-          height: '100%',
-          border: '1px solid var(--border-color)',
-          borderRadius: 'var(--border-radius)',
-        }">
-          <n-flex align="center" justify="center" :style="{ height: '100%' }">
-            <n-button quaternary round size="large" @click="handleFilePick">
-              点击选择或将固件拖放到此处
-              <template #icon>
-                <n-icon>
-                  <add-12-regular />
-                </n-icon>
-              </template>
-            </n-button>
-          </n-flex>
-        </n-element>
+        <partition-empty v-if="isEmpty(partitions)" :style="{ height: '100%' }" @pick-file="handleFilePick" />
         <partition-list v-else :partitions :style="{ height: '100%' }">
           <template #footer>
             <n-button text block :disabled="busyForFlash" @click="handleFilePick">
@@ -62,10 +53,10 @@
             <field-size :size="data.file.size" />
           </template>
           <template #column-progress="{ index }">
-            <template v-if="currentIndex == null || currentProgress == null || currentIndex < index">
+            <template v-if="progress == null || progress.index < index">
               <n-text>未开始</n-text>
             </template>
-            <template v-else-if="currentIndex == index">
+            <template v-else-if="progress.index == index">
               <template v-if="status == FlashStatus.STOPPED">
                 <n-text type="error">已停止</n-text>
               </template>
@@ -73,10 +64,10 @@
                 <n-text type="error">异常</n-text>
               </template>
               <template v-else>
-                <field-progress :progress="currentProgress" />
+                <field-progress :progress="progress.current" />
               </template>
             </template>
-            <template v-else-if="currentIndex > index">
+            <template v-else-if="progress.index > index">
               <field-progress :progress="1" />
             </template>
           </template>
@@ -95,11 +86,11 @@
 
     <n-flex align="center" :size="32">
       <n-flex align="center" :style="{ width: 'auto', flex: '1 1 auto' }">
-        <template v-if="busyForInfo || status == FlashStatus.CONNECTING">
+        <template v-if="status == FlashStatus.CONNECTING">
           <n-spin size="small" />
         </template>
         <template v-else-if="status == FlashStatus.FLASHING">
-          <n-progress type="line" :percentage="progress" :show-indicator="false" />
+          <n-progress type="line" :percentage="progressPct" :show-indicator="false" />
         </template>
         <template v-else-if="status == FlashStatus.SUCCESS">
           <n-text :class="$style.result" type="success">
@@ -131,66 +122,48 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref, useCssModule, watch } from 'vue';
+import { computed, ref, useCssModule } from 'vue';
 import {
   NButton,
-  NElement,
   NFlex,
   NIcon,
   NInput,
   NProgress,
-  NSelect,
   NSpin,
   NText,
-  type SelectOption,
 } from 'naive-ui';
 import {
   Add12Regular,
   Delete16Regular,
 } from '@vicons/fluent';
-import { invoke } from '@tauri-apps/api/tauri';
+import { isEmpty } from 'radash';
 import { open } from '@tauri-apps/api/dialog';
 import { processFiles, type IPartition } from '@/utils/images';
 import { cskburn } from '@/utils/cskburn';
 
-import { useIntervally } from '@/composables/window/useIntervally';
+import { busyOn } from '@/composables/busyOn';
 
-import FileDropper from '@/components/FileDropper.vue';
+import PortSelector from '@/components/sections/PortSelector.vue';
+
+import SelectableText from '@/components/common/SelectableText.vue';
+import FileDropper from '@/components/common/FileDropper.vue';
+import PartitionEmpty from '@/components/PartitionEmpty.vue';
 import PartitionList from '@/components/PartitionList.vue';
 
-import FieldBase from '@/components/FieldBase.vue';
-import FieldAddr from '@/components/FieldAddr.vue';
-import FieldSize from '@/components/FieldSize.vue';
-import FieldProgress from '@/components/FieldProgress.vue';
+import FieldBase from '@/components/datatable/FieldBase.vue';
+import FieldAddr from '@/components/datatable/FieldAddr.vue';
+import FieldSize from '@/components/datatable/FieldSize.vue';
+import FieldProgress from '@/components/datatable/FieldProgress.vue';
 
 const $style = useCssModule();
 
 const selectedPort = ref<string | null>(null);
-const availablePorts = useIntervally(1000, async () => await invoke('list_ports'));
-
-const availableSelections = computed(() => (availablePorts.value ?? []).map((port) => ({
-  label: port,
-  value: port,
-  class: $style.port,
-}) as SelectOption));
-
-watch(availablePorts, (ports) => {
-  if (selectedPort.value) {
-    if (!ports?.includes(selectedPort.value)) {
-      selectedPort.value = ports?.[0] ?? null;
-    }
-  } else {
-    selectedPort.value = ports?.[0] ?? null;
-  }
-});
-
 const partitions = ref<IPartition[]>([]);
-const parsing = ref(false);
 
+const parsing = ref(false);
 async function handleFiles(files: string[]) {
-  parsing.value = true;
-  partitions.value = partitions.value.concat(await processFiles(files));
-  parsing.value = false;
+  const parts = await busyOn(processFiles(files), parsing);
+  partitions.value = partitions.value.concat(parts);
 }
 
 async function handleFilePick() {
@@ -213,8 +186,15 @@ async function handlePartRemove(index: number) {
   await file.free();
 }
 
-const chipId = ref('N/A');
-const flashId = ref('N/A');
+const chipId = ref<string | null>(null);
+const flashId = ref<string | null>(null);
+const flashSize = ref<number | null>(null);
+
+const flashInfo = computed(() => {
+  if (flashId.value != null && flashSize.value != null) {
+    return `${flashId.value} (${Math.round(flashSize.value / 1024 / 1024)} MB)`;
+  }
+});
 
 enum FlashStatus {
   CONNECTING,
@@ -230,29 +210,28 @@ const busyForFlash = computed(() => status.value == FlashStatus.CONNECTING || st
 
 const readyToFlash = computed(() => selectedPort.value != null && partitions.value.length > 0);
 
-async function fetchInfo() {
-  busyForInfo.value = true;
+async function fetchInfo(): Promise<void> {
+  chipId.value = null;
+  flashId.value = null;
+  flashSize.value = null;
 
-  await cskburn(selectedPort.value!, 1500000, [], {
+  await busyOn(cskburn(selectedPort.value!, 1500000, [], {
     onChipId(id) {
       chipId.value = id;
     },
     onFlashId(id, size) {
-      flashId.value = `${id} (${Math.round(size / 1024 / 1024)} MB)`;
+      flashId.value = id;
+      flashSize.value = size;
     },
-  });
-
-  busyForInfo.value = false;
+  }), busyForInfo);
 }
 
 const output = ref('');
 const outputShown = ref(false);
 
-const currentIndex = ref<number | null>(null);
-const currentProgress = ref<number | null>(null);
-
-const progress = computed(() => {
-  if (currentIndex.value == null || currentProgress.value == null) {
+const progress = ref<{ index: number, current: number } | null>(null);
+const progressPct = computed(() => {
+  if (progress.value == null) {
     return 0;
   }
 
@@ -261,15 +240,15 @@ const progress = computed(() => {
   }
 
   const total = totalSizeOf(partitions.value);
-  const wrote = totalSizeOf(partitions.value.slice(0, currentIndex.value));
-  const current = partitions.value[currentIndex.value].file.size * currentProgress.value;
+  const wrote = totalSizeOf(partitions.value.slice(0, progress.value.index));
+  const current = partitions.value[progress.value.index].file.size * progress.value.current;
 
   return (wrote + current) / total * 100;
 });
 
 let aborter: AbortController | undefined;
 
-async function startFlash() {
+async function startFlash(): Promise<void> {
   const args = ['--verify-all'];
   for (const part of partitions.value) {
     args.push(part.addr.toString(), part.file.path);
@@ -277,8 +256,7 @@ async function startFlash() {
 
   aborter = new AbortController();
 
-  currentIndex.value = null;
-  currentProgress.value = null;
+  progress.value = null;
   outputShown.value = false;
   status.value = FlashStatus.CONNECTING;
 
@@ -288,16 +266,15 @@ async function startFlash() {
       chipId.value = id;
     },
     onFlashId(id, size) {
-      flashId.value = `${id} (${Math.round(size / 1024 / 1024)} MB)`;
+      flashId.value = id;
+      flashSize.value = size;
     },
     onPartition(index, _total, _addr) {
-      currentIndex.value = index;
-      currentProgress.value = 0;
+      progress.value = { index, current: 0 };
       status.value = FlashStatus.FLASHING;
     },
-    onProgress(index, progress) {
-      currentIndex.value = index;
-      currentProgress.value = progress;
+    onProgress(index, current) {
+      progress.value = { index, current };
     },
     onError(_error) {
       status.value = FlashStatus.ERROR;
@@ -312,7 +289,7 @@ async function startFlash() {
   }
 }
 
-function stopFlash() {
+function stopFlash(): void {
   status.value = FlashStatus.STOPPED;
   aborter?.abort();
 }
@@ -321,14 +298,11 @@ function stopFlash() {
 <style lang="scss" module>
 :global(html, body) {
   user-select: none;
+  cursor: default;
 }
 
 .port {
   font-family: monospace;
-}
-
-.selectable {
-  user-select: text;
 }
 
 .result {

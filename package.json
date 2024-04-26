@@ -15,6 +15,7 @@
     "md5": "^2.3.0",
     "naive-ui": "^2.38.1",
     "pify": "^6.1.0",
+    "radash": "^12.1.0",
     "tauri-plugin-fs-extra-api": "github:tauri-apps/tauri-plugin-fs-extra#v1",
     "vue": "^3.3.4"
   },

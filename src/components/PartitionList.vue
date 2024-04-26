@@ -1,18 +1,17 @@
 <template>
-  <data-table-with-footer :columns="slottedColumns(slots, columns)" :data="props.partitions" flex-height size="small">
-    <template #footer>
-      <component v-if="props.partitions.length > 0" :is="slots.footer" />
-    </template>
-  </data-table-with-footer>
+  <n-data-table
+    :columns="columnsWithFooter(slottedColumns(slots, columns), !isEmpty(props.partitions) ? slots.footer : undefined)"
+    :data="dataWithFooter(props.partitions)" flex-height size="small" />
 </template>
 
 <script lang="ts" setup>
 import type { Component } from 'vue';
-import type { DataTableColumns } from 'naive-ui';
+import { NDataTable, type DataTableColumns } from 'naive-ui';
+import { isEmpty } from 'radash';
 import type { IPartition } from '@/utils/images';
-import { slottedColumns, type DataTableColumnSlots } from '@/utils/slottedDataTable';
 
-import DataTableWithFooter from '@/components/DataTableWithFooter.vue';
+import { columnsWithFooter, dataWithFooter } from '@/composables/naive-ui/footerDataTable';
+import { slottedColumns, type DataTableColumnSlots } from '@/composables/naive-ui/slottedDataTable';
 
 const props = defineProps<{
   partitions: IPartition[];
