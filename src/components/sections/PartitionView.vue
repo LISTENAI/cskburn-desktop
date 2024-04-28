@@ -21,6 +21,9 @@
           :style="{ height: '100%' }">
           <selectable-text :class="$style.name" selectable>{{ image.file.name }}</selectable-text>
           <span>(<file-size :class="$style.size" :size="image.file.size" />)</span>
+          <n-text v-if="props.errors[0]" type="error">
+            {{ props.errors[0] }}
+          </n-text>
           <n-button secondary :disabled="props.busy" :style="{ marginTop: '16px' }" @click="() => image = null">
             重新选择
           </n-button>
@@ -52,7 +55,21 @@
           </field-base>
         </template>
         <template #column-progress="{ index }">
-          <template v-if="props.progress == null || props.progress.index < index">
+          <template v-if="!!props.errors[index]">
+            <n-popover>
+              <template #trigger>
+                <n-button quaternary circle type="error" size="small">
+                  <template #icon>
+                    <n-icon>
+                      <error-circle-16-regular />
+                    </n-icon>
+                  </template>
+                </n-button>
+              </template>
+              <span>{{ props.errors[index] }}</span>
+            </n-popover>
+          </template>
+          <template v-else-if="props.progress == null || props.progress.index < index">
             <n-text>未开始</n-text>
           </template>
           <template v-else-if="props.progress.index == index">
@@ -91,12 +108,14 @@ import {
   NElement,
   NFlex,
   NIcon,
+  NPopover,
   NSpin,
   NText,
 } from 'naive-ui';
 import {
   Add12Regular,
   Delete16Regular,
+  ErrorCircle16Regular,
 } from '@vicons/fluent';
 import { isEmpty } from 'radash';
 import { open } from '@tauri-apps/api/dialog';
@@ -124,6 +143,7 @@ const image = defineModel<IFlashImage | null>('image');
 const props = defineProps<{
   busy: boolean;
   progress: IProgress | null;
+  errors: (string | undefined)[];
 }>();
 
 const parsing = ref(false);

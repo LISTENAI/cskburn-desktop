@@ -23,7 +23,7 @@
       </n-button>
     </n-flex>
 
-    <partition-view v-model:image="image" :busy="busyForFlash" :progress="progressTable"
+    <partition-view v-model:image="image" :busy="busyForFlash" :progress="progressTable" :errors
       :style="{ flex: '1 1 auto' }" />
 
     <n-flex align="center" :size="32">
@@ -73,8 +73,7 @@ import {
   NSpin,
   NText,
 } from 'naive-ui';
-import { sum } from 'radash';
-import type { IFlashImage } from '@/utils/images';
+import { imageSize, type IFlashImage } from '@/utils/images';
 import { cskburn } from '@/utils/cskburn';
 
 import { busyOn } from '@/composables/busyOn';
@@ -111,7 +110,7 @@ const status = ref<null | FlashStatus>(null);
 const busyForInfo = ref(false);
 const busyForFlash = computed(() => status.value == FlashStatus.CONNECTING || status.value == FlashStatus.FLASHING);
 
-const readyToFlash = computed(() => selectedPort.value != null && image.value != null);
+const readyToFlash = computed(() => selectedPort.value != null && image.value != null && !hasError.value);
 
 async function fetchInfo(): Promise<void> {
   chipId.value = null;
@@ -128,6 +127,44 @@ async function fetchInfo(): Promise<void> {
     },
   }), busyForInfo);
 }
+
+const errors = computed(() => {
+  if (image.value?.format == 'bin') {
+    return image.value.partitions.map((partition, _index, partitions) => {
+      const start = partition.addr;
+      const end = start + partition.file.size;
+
+      for (const [otherIndex, other] of partitions.entries()) {
+        if (partition == other) {
+          continue;
+        }
+
+        const otherStart = other.addr;
+        const otherEnd = otherStart + other.file.size;
+
+        if (!(start >= otherEnd || end <= otherStart)) {
+          return `与分区 #${otherIndex + 1} 重叠`;
+        }
+      }
+
+      if (start % 4096 != 0) {
+        return '地址未 4K 对齐';
+      }
+
+      if (flashSize.value != null && end > flashSize.value) {
+        return '超出 Flash 大小';
+      }
+    });
+  } else if (image.value?.format == 'hex') {
+    if (flashSize.value != null && imageSize(image.value) > flashSize.value) {
+      return ['超出 Flash 大小'];
+    }
+  }
+
+  return [];
+});
+
+const hasError = computed(() => errors.value.some((error) => !!error));
 
 const output = ref('');
 const outputShown = ref(false);
@@ -164,13 +201,13 @@ const progressPct = computed(() => {
   }
 
   if (image.value.format == 'bin') {
-    const total = sum(image.value.partitions, (part) => part.file.size);
-    const wrote = sum(image.value.partitions.slice(0, progress.value.index), (part) => part.file.size);
+    const total = imageSize(image.value);
+    const wrote = imageSize(image.value, progress.value.index);
     const current = image.value.partitions[progress.value.index].file.size * progress.value.current;
     return (wrote + current) / total * 100;
   } else if (image.value.format == 'hex') {
-    const total = sum(image.value.sections, (section) => section.size);
-    const wrote = sum(image.value.sections.slice(0, progress.value.index), (section) => section.size);
+    const total = imageSize(image.value);
+    const wrote = imageSize(image.value, progress.value.index);
     const current = image.value.sections[progress.value.index].size * progress.value.current;
     return (wrote + current) / total * 100;
   }

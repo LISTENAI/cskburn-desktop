@@ -1,5 +1,6 @@
 import { metadata } from 'tauri-plugin-fs-extra-api';
 import { basename } from '@tauri-apps/api/path';
+import { sum } from 'radash';
 
 import { readLpk } from './readLpk';
 import { readHex, type ISection } from './readHex';
@@ -49,6 +50,14 @@ export async function processFiles(paths: string[]): Promise<IFlashImage> {
   }
 
   return { format: 'bin', partitions };
+}
+
+export function imageSize(image: IFlashImage, toIndex?: number): number {
+  if (image.format == 'hex') {
+    return sum(image.sections.slice(0, toIndex), (section) => section.size);
+  } else {
+    return sum(image.partitions.slice(0, toIndex), (part) => part.file.size);
+  }
 }
 
 class LocalBinFile implements IFileRef {
