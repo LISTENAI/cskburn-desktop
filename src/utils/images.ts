@@ -2,6 +2,16 @@ import { metadata } from 'tauri-plugin-fs-extra-api';
 import { basename } from '@tauri-apps/api/path';
 
 import { readLpk } from './readLpk';
+import { readHex, type ISection } from './readHex';
+
+export type IFlashImage = {
+  format: 'bin';
+  partitions: IPartition[];
+} | {
+  format: 'hex';
+  file: IFileRef;
+  sections: ISection[];
+};
 
 export interface IPartition {
   addr: number;
@@ -15,7 +25,16 @@ export interface IFileRef {
   free: () => Promise<void>;
 }
 
-export async function processFiles(paths: string[]): Promise<IPartition[]> {
+export async function processFiles(paths: string[]): Promise<IFlashImage> {
+  const hexFile = paths.find(path => path.toLowerCase().endsWith('.hex'));
+  if (hexFile) {
+    return {
+      format: 'hex',
+      file: await LocalBinFile.from(hexFile),
+      sections: await readHex(hexFile),
+    };
+  }
+
   const partitions: IPartition[] = [];
 
   for (const path of paths) {
@@ -29,7 +48,7 @@ export async function processFiles(paths: string[]): Promise<IPartition[]> {
     }
   }
 
-  return partitions;
+  return { format: 'bin', partitions };
 }
 
 class LocalBinFile implements IFileRef {

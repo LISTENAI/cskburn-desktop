@@ -23,7 +23,7 @@
       </n-button>
     </n-flex>
 
-    <partition-view v-model:partitions="partitions" :busy="busyForFlash" :progress="progressTable"
+    <partition-view v-model:image="image" :busy="busyForFlash" :progress="progressTable"
       :style="{ flex: '1 1 auto' }" />
 
     <n-flex align="center" :size="32">
@@ -73,7 +73,8 @@ import {
   NSpin,
   NText,
 } from 'naive-ui';
-import type { IPartition } from '@/utils/images';
+import { sum } from 'radash';
+import type { IFlashImage } from '@/utils/images';
 import { cskburn } from '@/utils/cskburn';
 
 import { busyOn } from '@/composables/busyOn';
@@ -86,7 +87,7 @@ import SelectableText from '@/components/common/SelectableText.vue';
 const $style = useCssModule();
 
 const selectedPort = ref<string | null>(null);
-const partitions = ref<IPartition[]>([]);
+const image = ref<IFlashImage | null>(null);
 
 const chipId = ref<string | null>(null);
 const flashId = ref<string | null>(null);
@@ -110,7 +111,7 @@ const status = ref<null | FlashStatus>(null);
 const busyForInfo = ref(false);
 const busyForFlash = computed(() => status.value == FlashStatus.CONNECTING || status.value == FlashStatus.FLASHING);
 
-const readyToFlash = computed(() => selectedPort.value != null && partitions.value.length > 0);
+const readyToFlash = computed(() => selectedPort.value != null && image.value != null);
 
 async function fetchInfo(): Promise<void> {
   chipId.value = null;
@@ -133,7 +134,7 @@ const outputShown = ref(false);
 
 const progress = ref<{ index: number, current: number } | null>(null);
 
-watch(partitions, () => {
+watch(image, () => {
   progress.value = null;
   status.value = null;
 });
@@ -158,27 +159,35 @@ const progressTable = computed<IProgress | null>(() => {
 });
 
 const progressPct = computed(() => {
-  if (progress.value == null) {
+  if (image.value == null || progress.value == null) {
     return 0;
   }
 
-  function totalSizeOf(parts: IPartition[]) {
-    return parts.reduce((acc, part) => acc + part.file.size, 0);
+  if (image.value.format == 'bin') {
+    const total = sum(image.value.partitions, (part) => part.file.size);
+    const wrote = sum(image.value.partitions.slice(0, progress.value.index), (part) => part.file.size);
+    const current = image.value.partitions[progress.value.index].file.size * progress.value.current;
+    return (wrote + current) / total * 100;
+  } else if (image.value.format == 'hex') {
+    const total = sum(image.value.sections, (section) => section.size);
+    const wrote = sum(image.value.sections.slice(0, progress.value.index), (section) => section.size);
+    const current = image.value.sections[progress.value.index].size * progress.value.current;
+    return (wrote + current) / total * 100;
   }
-
-  const total = totalSizeOf(partitions.value);
-  const wrote = totalSizeOf(partitions.value.slice(0, progress.value.index));
-  const current = partitions.value[progress.value.index].file.size * progress.value.current;
-
-  return (wrote + current) / total * 100;
 });
 
 let aborter: AbortController | undefined;
 
 async function startFlash(): Promise<void> {
   const args = ['--verify-all'];
-  for (const part of partitions.value) {
-    args.push(part.addr.toString(), part.file.path);
+  if (image.value == null) {
+    return;
+  } else if (image.value.format == 'hex') {
+    args.push(image.value.file.path);
+  } else if (image.value.format == 'bin') {
+    for (const part of image.value.partitions) {
+      args.push(part.addr.toString(), part.file.path);
+    }
   }
 
   aborter = new AbortController();

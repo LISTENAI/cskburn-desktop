@@ -4,7 +4,7 @@
       正在解析
     </template>
     <file-dropper :disabled="props.busy" :style="{ height: '100%' }" @file-drop="handleFiles">
-      <n-element v-if="!partitions || isEmpty(partitions)" :class="$style.empty" :style="{ height: '100%' }">
+      <n-element v-if="image == null" :class="$style.empty" :style="{ height: '100%' }">
         <n-flex align="center" justify="center" :style="{ height: '100%' }">
           <n-button quaternary round size="large" @click="handleFilePick">
             点击选择或将固件拖放到此处
@@ -16,7 +16,17 @@
           </n-button>
         </n-flex>
       </n-element>
-      <partition-table v-else :partitions :style="{ height: '100%' }">
+      <n-element v-else-if="image.format == 'hex'" :class="$style.empty" :style="{ height: '100%' }">
+        <n-flex :class="$style.hexFile" vertical align="center" justify="center" :wrap="false"
+          :style="{ height: '100%' }">
+          <selectable-text :class="$style.name" selectable>{{ image.file.name }}</selectable-text>
+          <span>(<file-size :class="$style.size" :size="image.file.size" />)</span>
+          <n-button secondary :disabled="props.busy" :style="{ marginTop: '16px' }" @click="() => image = null">
+            重新选择
+          </n-button>
+        </n-flex>
+      </n-element>
+      <partition-table v-else-if="image.format == 'bin'" :partitions="image.partitions" :style="{ height: '100%' }">
         <template #footer>
           <n-button text block :disabled="props.busy" @click="handleFilePick">
             点击或拖放添加更多固件
@@ -37,7 +47,9 @@
           <field-addr v-model:addr="data.addr" :disabled="props.busy" />
         </template>
         <template #column-size="{ data }">
-          <field-size :size="data.file.size" />
+          <field-base>
+            <file-size :size="data.file.size" />
+          </field-base>
         </template>
         <template #column-progress="{ index }">
           <template v-if="props.progress == null || props.progress.index < index">
@@ -89,15 +101,16 @@ import {
 import { isEmpty } from 'radash';
 import { open } from '@tauri-apps/api/dialog';
 
-import { processFiles, type IPartition } from '@/utils/images';
+import { processFiles, type IFlashImage } from '@/utils/images';
 import { busyOn } from '@/composables/busyOn';
 
 import FileDropper from '@/components/common/FileDropper.vue';
+import FileSize from '@/components/common/FileSize.vue';
+import SelectableText from '@/components/common/SelectableText.vue';
 import PartitionTable from '@/components/common/PartitionTable.vue';
 
 import FieldBase from '@/components/datatable/FieldBase.vue';
 import FieldAddr from '@/components/datatable/FieldAddr.vue';
-import FieldSize from '@/components/datatable/FieldSize.vue';
 import FieldProgress from '@/components/datatable/FieldProgress.vue';
 
 export interface IProgress {
@@ -106,7 +119,7 @@ export interface IProgress {
   current: number;
 }
 
-const partitions = defineModel<IPartition[]>('partitions');
+const image = defineModel<IFlashImage | null>('image');
 
 const props = defineProps<{
   busy: boolean;
@@ -115,8 +128,15 @@ const props = defineProps<{
 
 const parsing = ref(false);
 async function handleFiles(files: string[]) {
-  const parts = await busyOn(processFiles(files), parsing);
-  partitions.value = (partitions.value ?? []).concat(parts);
+  const parsed = await busyOn(processFiles(files), parsing);
+  if (parsed.format == 'hex' || parsed.format != image.value?.format) {
+    if (image.value?.format == 'bin') {
+      await Promise.all(image.value.partitions.map((part) => part.file.free()));
+    }
+    image.value = parsed;
+  } else {
+    image.value = { ...image.value, partitions: image.value.partitions.concat(parsed.partitions) };
+  }
 }
 
 async function handleFilePick() {
@@ -134,11 +154,15 @@ async function handleFilePick() {
 }
 
 async function handlePartRemove(index: number) {
-  const file = partitions.value![index].file;
-  const copy = [...partitions.value!];
-  copy.splice(index, 1);
-  partitions.value = copy;
-  await file.free();
+  if (image.value?.format != 'bin') {
+    return;
+  }
+
+  const file = image.value.partitions[index].file;
+  const partitions = [...image.value.partitions];
+  partitions.splice(index, 1);
+  image.value = isEmpty(partitions) ? null : { ...image.value, partitions };
+  await file?.free();
 }
 </script>
 
@@ -146,5 +170,21 @@ async function handlePartRemove(index: number) {
 .empty {
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius);
+}
+
+.hexFile {
+  width: 100%;
+
+  box-sizing: border-box;
+  padding: 32px;
+
+  font-family: var(--font-family-mono);
+
+  .name {
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
 </style>

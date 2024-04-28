@@ -1,12 +1,11 @@
 <template>
-  <field-base :class="$style.size" @click="switchUnit">
+  <span :class="$style.size" @click="switchUnit">
     {{ unit == 0 ? value : value.toFixed(2) }} {{ UNIT[unit] }}
-  </field-base>
+  </span>
 </template>
 
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
-import FieldBase from './FieldBase.vue';
 
 const UNIT = ['B', 'KB', 'MB'];
 
