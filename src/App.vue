@@ -23,66 +23,8 @@
       </n-button>
     </n-flex>
 
-    <n-spin :show="parsing" :delay="200" :style="{ flex: '1 1 auto' }" :content-style="{ height: '100%' }">
-      <template #description>
-        正在解析
-      </template>
-      <file-dropper :disabled="busyForFlash" :style="{ height: '100%' }" @file-drop="handleFiles">
-        <partition-empty v-if="isEmpty(partitions)" :style="{ height: '100%' }" @pick-file="handleFilePick" />
-        <partition-list v-else :partitions :style="{ height: '100%' }">
-          <template #footer>
-            <n-button text block :disabled="busyForFlash" @click="handleFilePick">
-              点击或拖放添加更多固件
-              <template #icon>
-                <n-icon>
-                  <add-12-regular />
-                </n-icon>
-              </template>
-            </n-button>
-          </template>
-          <template #column-index="{ index }">
-            <field-base>{{ index + 1 }}</field-base>
-          </template>
-          <template #column-name="{ data }">
-            <field-base selectable>{{ data.file.name }}</field-base>
-          </template>
-          <template #column-addr="{ data }">
-            <field-addr v-model:addr="data.addr" :disabled="busyForFlash" />
-          </template>
-          <template #column-size="{ data }">
-            <field-size :size="data.file.size" />
-          </template>
-          <template #column-progress="{ index }">
-            <template v-if="progress == null || progress.index < index">
-              <n-text>未开始</n-text>
-            </template>
-            <template v-else-if="progress.index == index">
-              <template v-if="status == FlashStatus.STOPPED">
-                <n-text type="error">已停止</n-text>
-              </template>
-              <template v-else-if="status == FlashStatus.ERROR">
-                <n-text type="error">异常</n-text>
-              </template>
-              <template v-else>
-                <field-progress :progress="progress.current" />
-              </template>
-            </template>
-            <template v-else-if="progress.index > index">
-              <field-progress :progress="1" />
-            </template>
-          </template>
-          <template #column-actions="{ index }">
-            <n-button quaternary circle size="small" :disabled="busyForFlash" @click="() => handlePartRemove(index)">
-              <template #icon>
-                <n-icon>
-                  <delete-16-regular />
-                </n-icon>
-              </template>
-            </n-button>
-          </template>
-        </partition-list>
-      </file-dropper>
-    </n-spin>
+    <partition-view v-model:partitions="partitions" :busy="busyForFlash" :progress="progressTable"
+      :style="{ flex: '1 1 auto' }" />
 
     <n-flex align="center" :size="32">
       <n-flex align="center" :style="{ width: 'auto', flex: '1 1 auto' }">
@@ -122,69 +64,29 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref, useCssModule } from 'vue';
+import { computed, ref, useCssModule, watch } from 'vue';
 import {
   NButton,
   NFlex,
-  NIcon,
   NInput,
   NProgress,
   NSpin,
   NText,
 } from 'naive-ui';
-import {
-  Add12Regular,
-  Delete16Regular,
-} from '@vicons/fluent';
-import { isEmpty } from 'radash';
-import { open } from '@tauri-apps/api/dialog';
-import { processFiles, type IPartition } from '@/utils/images';
+import type { IPartition } from '@/utils/images';
 import { cskburn } from '@/utils/cskburn';
 
 import { busyOn } from '@/composables/busyOn';
 
 import PortSelector from '@/components/sections/PortSelector.vue';
+import PartitionView, { type IProgress } from '@/components/sections/PartitionView.vue';
 
 import SelectableText from '@/components/common/SelectableText.vue';
-import FileDropper from '@/components/common/FileDropper.vue';
-import PartitionEmpty from '@/components/PartitionEmpty.vue';
-import PartitionList from '@/components/PartitionList.vue';
-
-import FieldBase from '@/components/datatable/FieldBase.vue';
-import FieldAddr from '@/components/datatable/FieldAddr.vue';
-import FieldSize from '@/components/datatable/FieldSize.vue';
-import FieldProgress from '@/components/datatable/FieldProgress.vue';
 
 const $style = useCssModule();
 
 const selectedPort = ref<string | null>(null);
 const partitions = ref<IPartition[]>([]);
-
-const parsing = ref(false);
-async function handleFiles(files: string[]) {
-  const parts = await busyOn(processFiles(files), parsing);
-  partitions.value = partitions.value.concat(parts);
-}
-
-async function handleFilePick() {
-  const selected = await open({
-    multiple: true,
-    filters: [{
-      name: 'CSK6 固件文件',
-      extensions: ['bin', 'hex', 'lpk']
-    }],
-  });
-
-  if (selected) {
-    await handleFiles(typeof selected == 'string' ? [selected] : selected);
-  }
-}
-
-async function handlePartRemove(index: number) {
-  const file = partitions.value[index].file;
-  partitions.value.splice(index, 1);
-  await file.free();
-}
 
 const chipId = ref<string | null>(null);
 const flashId = ref<string | null>(null);
@@ -230,6 +132,31 @@ const output = ref('');
 const outputShown = ref(false);
 
 const progress = ref<{ index: number, current: number } | null>(null);
+
+watch(partitions, () => {
+  progress.value = null;
+  status.value = null;
+});
+
+const progressTable = computed<IProgress | null>(() => {
+  if (progress.value == null) {
+    return null;
+  }
+
+  const state = ((): IProgress['state'] => {
+    switch (status.value) {
+      case FlashStatus.STOPPED:
+        return 'stopped';
+      case FlashStatus.ERROR:
+        return 'error';
+      default:
+        return 'progress';
+    }
+  })();
+
+  return { ...progress.value, state };
+});
+
 const progressPct = computed(() => {
   if (progress.value == null) {
     return 0;
@@ -299,10 +226,6 @@ function stopFlash(): void {
 :global(html, body) {
   user-select: none;
   cursor: default;
-}
-
-.port {
-  font-family: monospace;
 }
 
 .result {
