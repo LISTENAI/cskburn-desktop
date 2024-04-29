@@ -1,0 +1,84 @@
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    permissions:
+      contents: write
+    strategy:
+      matrix:
+        include:
+          - platform: macos-latest
+            target: aarch64-apple-darwin
+            bundles: [dmg]
+          - platform: macos-latest
+            target: x86_64-apple-darwin
+            bundles: [dmg]
+          - platform: ubuntu-20.04
+            target: x86_64-unknown-linux-gnu
+            bundles: [deb]
+          - platform: windows-latest
+            target: x86_64-pc-windows-msvc
+            bundles: [nsis]
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: 'npm'
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install native dependencies (Ubuntu only)
+        if: matrix.platform == 'ubuntu-20.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libappindicator3-dev \
+            librsvg2-dev \
+            libudev-dev \
+            libwebkit2gtk-4.0-dev \
+            patchelf
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build
+        uses: tauri-apps/tauri-action@v0
+        id: build
+        with:
+          args: >
+            --target ${{ matrix.target }}
+            --bundles ${{ join(matrix.bundles, ',') }}
+
+      - name: Collect artifacts (Bash)
+        if: matrix.platform != 'windows-latest'
+        run: |
+          mkdir -p artifacts
+          for artifact in ${{ join(fromJson(steps.build.outputs.artifactPaths), ' ') }}; do
+            mv $artifact artifacts/
+          done
+
+      - name: Collect artifacts (PowerShell)
+        if: matrix.platform == 'windows-latest'
+        run: |
+          mkdir artifacts
+          $artifactPaths = ConvertFrom-Json '${{ steps.build.outputs.artifactPaths }}'
+          foreach ($artifact in $artifactPaths) {
+            Move-Item $artifact artifacts/
+          }
+
+      - name: Archive artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cskburn-desktop-${{ matrix.target }}
+          path: artifacts/
