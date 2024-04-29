@@ -4,9 +4,11 @@
 
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { NInput } from 'naive-ui';
+import { NInput, useThemeVars } from 'naive-ui';
 
 const addr = defineModel<number>('addr', { default: 0 });
+
+const themeVars = useThemeVars();
 
 const value = computed({
   get: () => `0x${addr.value.toString(16).padStart(8, '0')}`,
@@ -23,6 +25,6 @@ function isHex(value: string): boolean {
 
 <style lang="scss" module>
 .input {
-  font-family: monospace;
+  font-family: v-bind('themeVars.fontFamilyMono');
 }
 </style>

@@ -10,13 +10,13 @@
         :style="{ flex: '0 1 300px' }" />
     </n-flex>
 
-    <n-flex align="center" :style="{ fontFamily: 'monospace' }">
-      <div :style="{ width: '16em' }">
+    <n-flex align="center">
+      <n-element :class="$style.info" :style="{ width: '16em' }">
         Chip ID: <selectable-text selectable>{{ chipId || 'N/A' }}</selectable-text>
-      </div>
-      <div :style="{ width: '16em' }">
+      </n-element>
+      <n-element :class="$style.info" :style="{ width: '16em' }">
         Flash ID: <selectable-text selectable>{{ flashInfo || 'N/A' }}</selectable-text>
-      </div>
+      </n-element>
       <n-button secondary size="small" :disabled="selectedPort == null || busyForFlash" :loading="busyForInfo"
         @click="fetchInfo">
         获取
@@ -58,15 +58,18 @@
       </n-button>
     </n-flex>
 
-    <n-input type="textarea" v-if="outputShown" :value="output" placeholder="" readonly :resizable="false"
-      :style="{ height: '200px', fontFamily: 'monospace' }" />
+    <n-element v-if="outputShown" :style="{ height: '200px' }">
+      <n-input type="textarea" :value="output" placeholder="" readonly :resizable="false"
+        :style="{ height: '100%', fontFamily: 'var(--font-family-mono)' }" />
+    </n-element>
   </n-flex>
 </template>
 
 <script lang="ts" setup>
-import { computed, ref, useCssModule, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import {
   NButton,
+  NElement,
   NFlex,
   NInput,
   NProgress,
@@ -82,8 +85,6 @@ import PortSelector from '@/components/sections/PortSelector.vue';
 import PartitionView, { type IProgress } from '@/components/sections/PartitionView.vue';
 
 import SelectableText from '@/components/common/SelectableText.vue';
-
-const $style = useCssModule();
 
 const selectedPort = ref<string | null>(null);
 const image = ref<IFlashImage | null>(null);
@@ -275,6 +276,10 @@ function stopFlash(): void {
 :global(html, body) {
   user-select: none;
   cursor: default;
+}
+
+.info {
+  font-family: var(--font-family-mono);
 }
 
 .result {
