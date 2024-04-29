@@ -233,6 +233,10 @@ async function startFlash(): Promise<void> {
   outputShown.value = false;
   status.value = FlashStatus.CONNECTING;
 
+  // Workaround for cskburn bug that invalid addresses won't cause non-zero exit,
+  // while probing retries prints `ERROR:`.
+  let mayHaveError = false;
+
   const result = await cskburn(selectedPort.value!, 1500000, args, {
     signal: aborter.signal,
     onChipId(id) {
@@ -250,16 +254,15 @@ async function startFlash(): Promise<void> {
       progress.value = { index, current };
     },
     onError(_error) {
-      status.value = FlashStatus.ERROR;
+      mayHaveError = true;
+    },
+    onFinished() {
+      mayHaveError = false;
     },
   });
 
   output.value = result.output;
-
-  // Only update status if status is not updated during flash
-  if (busyForFlash.value) {
-    status.value = result.code == 0 ? FlashStatus.SUCCESS : FlashStatus.ERROR;
-  }
+  status.value = (result.code == 0 && !mayHaveError) ? FlashStatus.SUCCESS : FlashStatus.ERROR;
 }
 
 function stopFlash(): void {
