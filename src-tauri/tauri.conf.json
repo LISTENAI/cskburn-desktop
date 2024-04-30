@@ -58,7 +58,8 @@
     "bundle": {
       "active": true,
       "targets": "all",
-      "identifier": "com.listenai.cskburn",
+      "identifier": "com.listenai.cskburn-desktop",
+      "publisher": "LISTENAI",
       "externalBin": [
         "../cskburn-cli/cskburn"
       ],

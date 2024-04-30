@@ -1,8 +1,10 @@
 [package]
 name = "cskburn-desktop"
 version = "0.0.0"
-description = "A Tauri App"
-authors = ["you"]
+description = "A programming utility for LISTENAI CSK series chips."
+repository = "https://github.com/LISTENAI/cskburn-rs"
+license = "Apache-2.0"
+authors = ["xychen <xychen@listenai.com>"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
