@@ -25,6 +25,12 @@ tar -xJf $shdir/cskburn-linux-x64.tar.xz -C $shdir
 mv $shdir/cskburn $shdir/cskburn-x86_64-unknown-linux-gnu
 rm $shdir/cskburn-linux-x64.tar.xz
 
+echo "Downloading cskburn-linux-arm64"
+wget -q --show-progress "${base_url}/cskburn-linux-arm64.tar.xz" -O $shdir/cskburn-linux-arm64.tar.xz
+tar -xJf $shdir/cskburn-linux-arm64.tar.xz -C $shdir
+mv $shdir/cskburn $shdir/cskburn-aarch64-unknown-linux-gnu
+rm $shdir/cskburn-linux-arm64.tar.xz
+
 echo "Downloading cskburn-darwin-x64"
 wget -q --show-progress "${base_url}/cskburn-darwin-x64.tar.xz" -O $shdir/cskburn-darwin-x64.tar.xz
 tar -xJf $shdir/cskburn-darwin-x64.tar.xz -C $shdir
