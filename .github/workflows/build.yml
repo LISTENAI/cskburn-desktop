@@ -11,15 +11,23 @@ jobs:
         include:
           - platform: macos-latest
             target: aarch64-apple-darwin
+            runner: cargo
             bundles: [dmg]
           - platform: macos-latest
             target: x86_64-apple-darwin
+            runner: cargo
             bundles: [dmg]
           - platform: ubuntu-20.04
+            target: aarch64-unknown-linux-gnu
+            runner: cross
+            bundles: [deb]
+          - platform: ubuntu-20.04
             target: x86_64-unknown-linux-gnu
+            runner: cross
             bundles: [deb]
           - platform: windows-latest
             target: x86_64-pc-windows-msvc
+            runner: cargo
             bundles: [nsis]
 
     runs-on: ${{ matrix.platform }}
@@ -38,16 +46,9 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
-      - name: Install native dependencies (Ubuntu only)
-        if: matrix.platform == 'ubuntu-20.04'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libappindicator3-dev \
-            librsvg2-dev \
-            libudev-dev \
-            libwebkit2gtk-4.0-dev \
-            patchelf
+      - name: Set up cross (Ubuntu only)
+        if: matrix.runner == 'cross'
+        run: cargo install cross
 
       - name: Install frontend dependencies
         run: npm ci
@@ -58,6 +59,7 @@ jobs:
         with:
           args: >
             --target ${{ matrix.target }}
+            --runner ${{ matrix.runner }}
             --bundles ${{ join(matrix.bundles, ',') }}
 
       - name: Collect artifacts (Bash)
