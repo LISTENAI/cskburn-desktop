@@ -24,7 +24,7 @@ export async function cskburn(
   opts?: ICSKBurnEventHandlers & { signal?: AbortSignal },
 ): Promise<ICSKBurnResult> {
   return new Promise(async (resolve, reject) => {
-    const command = Command.sidecar('../cskburn-cli/cskburn', [
+    const command = Command.sidecar('cskburn-cli/cskburn', [
       '-s', port,
       '-b', `${baud}`,
       '--chip', '6',
