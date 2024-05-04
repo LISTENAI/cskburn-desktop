@@ -24,7 +24,7 @@ jobs:
           - platform: ubuntu-20.04
             target: x86_64-unknown-linux-gnu
             runner: cross
-            bundles: [deb]
+            bundles: [deb, appimage]
           - platform: windows-latest
             target: x86_64-pc-windows-msvc
             runner: cargo
@@ -49,6 +49,15 @@ jobs:
       - name: Set up cross (Ubuntu only)
         if: matrix.runner == 'cross'
         run: cargo install cross
+
+      - name: Install AppImage dependencies (Ubuntu only)
+        if: contains(matrix.bundles, 'appimage')
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends \
+            libappindicator3-dev \
+            librsvg2-dev \
+            libwebkit2gtk-4.0-dev
 
       - name: Install frontend dependencies
         run: npm ci
