@@ -1,6 +1,8 @@
 <template>
   <n-config-provider :theme="darkMode ? darkTheme : null">
-    <App />
+    <n-dialog-provider>
+      <App />
+    </n-dialog-provider>
     <n-global-style />
   </n-config-provider>
 </template>
@@ -9,6 +11,7 @@
 import { computed } from 'vue';
 import {
   NConfigProvider,
+  NDialogProvider,
   NGlobalStyle,
   darkTheme,
   useOsTheme,

@@ -11,10 +11,10 @@ jobs:
         include:
           - platform: macos-latest
             target: aarch64-apple-darwin
-            bundles: [dmg]
+            bundles: [dmg, updater]
           - platform: macos-latest
             target: x86_64-apple-darwin
-            bundles: [dmg]
+            bundles: [dmg, updater]
           - platform: ubuntu-22.04
             target: aarch64-unknown-linux-gnu
             triple: aarch64-linux-gnu
@@ -24,10 +24,10 @@ jobs:
             target: x86_64-unknown-linux-gnu
             triple: x86_64-linux-gnu
             arch: amd64
-            bundles: [deb, appimage]
+            bundles: [deb, appimage, updater]
           - platform: windows-latest
             target: x86_64-pc-windows-msvc
-            bundles: [nsis]
+            bundles: [nsis, updater]
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -112,6 +112,9 @@ jobs:
           args: >
             --target ${{ matrix.target }}
             --bundles ${{ join(matrix.bundles, ',') }}
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: '${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}'
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ''
 
       - name: Collect artifacts (Bash)
         if: matrix.platform != 'windows-latest'

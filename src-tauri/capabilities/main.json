@@ -27,6 +27,8 @@
           "sidecar": true
         }
       ]
-    }
+    },
+    "process:allow-restart",
+    "updater:default"
   ]
 }

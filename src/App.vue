@@ -4,6 +4,8 @@
     height: '100vh',
     padding: '16px'
   }">
+    <auto-updater />
+
     <n-flex align="center">
       <div>端口:</div>
       <port-selector v-model:port="selectedPort" :disabled="busyForInfo || busyForFlash"
@@ -81,6 +83,7 @@ import { cskburn } from '@/utils/cskburn';
 
 import { busyOn } from '@/composables/busyOn';
 
+import AutoUpdater from '@/components/sections/AutoUpdater.vue';
 import PortSelector from '@/components/sections/PortSelector.vue';
 import PartitionView, { type IProgress } from '@/components/sections/PartitionView.vue';
 
