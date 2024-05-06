@@ -1,4 +1,4 @@
-import { readTextFile } from '@tauri-apps/api/fs';
+import { readTextFile } from '@tauri-apps/plugin-fs';
 import { UserError } from '@/userError';
 
 export interface ISection {

@@ -10,17 +10,19 @@
     "tauri": "tauri"
   },
   "dependencies": {
-    "@tauri-apps/api": "^1",
+    "@tauri-apps/api": "^2.0.0-beta.11",
+    "@tauri-apps/plugin-dialog": "^2.0.0-beta.3",
+    "@tauri-apps/plugin-fs": "^2.0.0-beta.3",
+    "@tauri-apps/plugin-shell": "^2.0.0-beta.3",
     "fflate": "^0.8.2",
     "md5": "^2.3.0",
     "naive-ui": "^2.38.1",
     "pify": "^6.1.0",
     "radash": "^12.1.0",
-    "tauri-plugin-fs-extra-api": "github:tauri-apps/tauri-plugin-fs-extra#v1",
     "vue": "^3.3.4"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^1",
+    "@tauri-apps/cli": "^2.0.0-beta.15",
     "@types/md5": "^2.3.5",
     "@types/node": "^20.12.7",
     "@types/pify": "^5.0.4",

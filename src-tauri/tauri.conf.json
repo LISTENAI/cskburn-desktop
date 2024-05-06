@@ -1,47 +1,32 @@
 {
+  "productName": "cskburn-desktop",
+  "version": "0.0.0",
+  "identifier": "com.listenai.cskburn-desktop",
   "build": {
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build",
-    "devPath": "http://localhost:1420",
-    "distDir": "dist"
+    "frontendDist": "dist",
+    "devUrl": "http://localhost:1420"
   },
-  "package": {
-    "productName": "cskburn-desktop",
-    "version": "0.0.0"
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "publisher": "LISTENAI",
+    "externalBin": [
+      "cskburn-cli/cskburn"
+    ]
   },
-  "tauri": {
-    "allowlist": {
-      "all": false,
-      "dialog": {
-        "all": false,
-        "open": true
-      },
-      "fs": {
-        "all": false,
-        "readFile": true,
-        "writeFile": true,
-        "removeFile": true,
-        "createDir": true,
-        "scope": [
-          "$APPCACHE/lpk_unpack",
-          "$APPCACHE/lpk_unpack/*"
-        ]
-      },
-      "path": {
-        "all": true
-      },
-      "shell": {
-        "all": false,
-        "open": true,
-        "sidecar": true,
-        "scope": [
-          {
-            "name": "cskburn-cli/cskburn",
-            "args": true,
-            "sidecar": true
-          }
-        ]
-      }
+  "plugins": {},
+  "app": {
+    "security": {
+      "csp": null
     },
     "windows": [
       {
@@ -51,25 +36,6 @@
         "minWidth": 800,
         "minHeight": 600
       }
-    ],
-    "security": {
-      "csp": null
-    },
-    "bundle": {
-      "active": true,
-      "targets": "all",
-      "identifier": "com.listenai.cskburn-desktop",
-      "publisher": "LISTENAI",
-      "externalBin": [
-        "cskburn-cli/cskburn"
-      ],
-      "icon": [
-        "icons/32x32.png",
-        "icons/128x128.png",
-        "icons/128x128@2x.png",
-        "icons/icon.icns",
-        "icons/icon.ico"
-      ]
-    }
+    ]
   }
 }

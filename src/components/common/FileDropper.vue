@@ -24,18 +24,19 @@ const emit = defineEmits<{
 
 const dropping = ref(false);
 
-useListen(TauriEvent.WINDOW_FILE_DROP_HOVER, () => {
+useListen(TauriEvent.DROP_OVER, () => {
   dropping.value = true;
 });
 
-useListen(TauriEvent.WINDOW_FILE_DROP_CANCELLED, () => {
+useListen(TauriEvent.DROP_CANCELLED, () => {
   dropping.value = false;
 });
 
-useListen<string[]>(TauriEvent.WINDOW_FILE_DROP, (event) => {
+useListen<{ paths: string[] }>(TauriEvent.DROP, (event) => {
+  console.log(event);
   dropping.value = false;
   if (props.disabled) return;
-  emit('file-drop', event.payload);
+  emit('file-drop', event.payload.paths);
 });
 </script>
 

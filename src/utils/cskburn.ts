@@ -1,4 +1,4 @@
-import { Command } from '@tauri-apps/api/shell';
+import { Command } from '@tauri-apps/plugin-shell';
 
 type ICSKBurnEventHandlers = Partial<{
   onWaitingForDevice: () => void;

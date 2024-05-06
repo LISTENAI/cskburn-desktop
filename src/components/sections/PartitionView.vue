@@ -118,7 +118,7 @@ import {
   ErrorCircle16Regular,
 } from '@vicons/fluent';
 import { isEmpty } from 'radash';
-import { open } from '@tauri-apps/api/dialog';
+import { open } from '@tauri-apps/plugin-dialog';
 
 import { processFiles, type IFlashImage } from '@/utils/images';
 import { busyOn } from '@/composables/busyOn';
@@ -168,8 +168,8 @@ async function handleFilePick() {
     }],
   });
 
-  if (selected) {
-    await handleFiles(typeof selected == 'string' ? [selected] : selected);
+  if (selected && selected.length > 0) {
+    await handleFiles(selected.map((file) => file.path));
   }
 }
 

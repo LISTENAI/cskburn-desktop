@@ -1,12 +1,7 @@
 import promisify from 'pify';
 import { unzip as _unzip } from 'fflate';
 import md5 from 'md5';
-import {
-  createDir,
-  readBinaryFile,
-  removeFile,
-  writeBinaryFile,
-} from '@tauri-apps/api/fs';
+import { mkdir, readFile, remove, writeFile } from '@tauri-apps/plugin-fs';
 import {
   appCacheDir,
   basename,
@@ -19,7 +14,7 @@ import { UserError } from '@/userError';
 const unzip = promisify(_unzip);
 
 export async function readLpk(path: string): Promise<IPartition[]> {
-  const buffer = await readBinaryFile(path);
+  const buffer = await readFile(path);
   const zip = await unzip(buffer);
 
   if (!zip['manifest.json']) {
@@ -76,12 +71,12 @@ export async function readLpk(path: string): Promise<IPartition[]> {
 class LpkBinFile implements IFileRef {
   static async from(pseudoPath: string, content: Uint8Array): Promise<LpkBinFile> {
     const unpackDir = await join(await appCacheDir(), 'lpk_unpack');
-    await createDir(unpackDir, { recursive: true });
+    await mkdir(unpackDir, { recursive: true });
 
     const path = await join(unpackDir, generateTempFileName());
     const name = await basename(pseudoPath);
 
-    await writeBinaryFile(path, content);
+    await writeFile(path, content);
 
     return new LpkBinFile(path, name, content.length);
   }
@@ -93,7 +88,7 @@ class LpkBinFile implements IFileRef {
   }
 
   async free(): Promise<void> {
-    await removeFile(this.path);
+    await remove(this.path);
   }
 }
 

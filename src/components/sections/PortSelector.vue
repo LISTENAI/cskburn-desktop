@@ -8,7 +8,7 @@
 import { computed, watch } from 'vue';
 import { NSelect, useThemeVars, type SelectOption } from 'naive-ui';
 import { isEmpty } from 'radash';
-import { invoke } from '@tauri-apps/api/tauri';
+import { invoke } from '@tauri-apps/api/core';
 
 import { useIntervally } from '@/composables/window/useIntervally';
 

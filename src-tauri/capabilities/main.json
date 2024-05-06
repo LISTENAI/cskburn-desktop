@@ -1,0 +1,32 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main-capability",
+  "description": "Capability for the main window",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "dialog:allow-open",
+    "event:default",
+    "fs:default",
+    {
+      "identifier": "fs:scope",
+      "allow": [
+        "$APPCACHE/lpk_unpack",
+        "$APPCACHE/lpk_unpack/*"
+      ]
+    },
+    "path:default",
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        {
+          "name": "cskburn-cli/cskburn",
+          "cmd": "",
+          "args": true,
+          "sidecar": true
+        }
+      ]
+    }
+  ]
+}
