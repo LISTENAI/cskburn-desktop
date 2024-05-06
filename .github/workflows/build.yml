@@ -16,7 +16,14 @@ jobs:
             target: x86_64-apple-darwin
             bundles: [dmg]
           - platform: ubuntu-22.04
+            target: aarch64-unknown-linux-gnu
+            triple: aarch64-linux-gnu
+            arch: arm64
+            bundles: [deb]
+          - platform: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
+            triple: x86_64-linux-gnu
+            arch: amd64
             bundles: [deb, appimage]
           - platform: windows-latest
             target: x86_64-pc-windows-msvc
@@ -38,16 +45,62 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
-      - name: Install native dependencies (Ubuntu only)
+      - name: (Ubuntu) Set up APT sources
         if: matrix.platform == 'ubuntu-22.04'
         run: |
+          cat <<EOF | sudo tee /etc/apt/sources.list
+          deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ jammy main restricted
+          deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ jammy-updates main restricted
+          deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ jammy universe
+          deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ jammy-updates universe
+          deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ jammy multiverse
+          deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ jammy-updates multiverse
+          deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ jammy-backports main restricted universe multiverse
+          deb [arch=amd64] http://security.ubuntu.com/ubuntu/ jammy-security main restricted
+          deb [arch=amd64] http://security.ubuntu.com/ubuntu/ jammy-security universe
+          deb [arch=amd64] http://security.ubuntu.com/ubuntu/ jammy-security multiverse
+          EOF
+
+      - name: (Ubuntu) Set up APT sources for ${{ matrix.arch }}
+        if: matrix.platform == 'ubuntu-22.04' && matrix.arch != 'amd64'
+        run: |
+          cat <<EOF | sudo tee --append /etc/apt/sources.list
+          deb [arch=${{ matrix.arch }}] http://ports.ubuntu.com/ubuntu-ports/ jammy main restricted
+          deb [arch=${{ matrix.arch }}] http://ports.ubuntu.com/ubuntu-ports/ jammy-updates main restricted
+          deb [arch=${{ matrix.arch }}] http://ports.ubuntu.com/ubuntu-ports/ jammy universe
+          deb [arch=${{ matrix.arch }}] http://ports.ubuntu.com/ubuntu-ports/ jammy-updates universe
+          deb [arch=${{ matrix.arch }}] http://ports.ubuntu.com/ubuntu-ports/ jammy multiverse
+          deb [arch=${{ matrix.arch }}] http://ports.ubuntu.com/ubuntu-ports/ jammy-updates multiverse
+          deb [arch=${{ matrix.arch }}] http://ports.ubuntu.com/ubuntu-ports/ jammy-backports main restricted universe multiverse
+          deb [arch=${{ matrix.arch }}] http://ports.ubuntu.com/ubuntu-ports/ jammy-security main restricted
+          deb [arch=${{ matrix.arch }}] http://ports.ubuntu.com/ubuntu-ports/ jammy-security universe
+          deb [arch=${{ matrix.arch }}] http://ports.ubuntu.com/ubuntu-ports/ jammy-security multiverse
+          EOF
+
+      - name: (Ubuntu) Install native dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo dpkg --add-architecture ${{ matrix.arch }}
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y \
-            libappindicator3-dev \
-            librsvg2-dev \
-            libudev-dev \
-            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev:${{ matrix.arch }} \
+            librsvg2-dev:${{ matrix.arch }} \
+            libssl-dev:${{ matrix.arch }} \
+            libudev-dev:${{ matrix.arch }} \
+            libwebkit2gtk-4.1-dev:${{ matrix.arch }} \
             patchelf
+          echo "PKG_CONFIG_SYSROOT_DIR=/usr" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=/lib/${{ matrix.triple }}/pkgconfig" >> $GITHUB_ENV
+
+      - name: (Ubuntu) Set up cross-compiler for ${{ matrix.arch }}
+        if: matrix.platform == 'ubuntu-22.04' && matrix.triple != 'x86_64-linux-gnu'
+        run: |
+          sudo apt-get install --no-install-recommends -y gcc-${{ matrix.triple }}
+          mkdir -p .cargo
+          cat <<EOF | tee .cargo/config.toml
+          [target.${{ matrix.target }}]
+          linker = "${{ matrix.triple }}-gcc"
+          EOF
 
       - name: Install frontend dependencies
         run: npm ci
