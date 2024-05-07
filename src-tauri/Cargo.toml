@@ -2,7 +2,7 @@
 name = "cskburn-desktop"
 version = "0.0.0"
 description = "A programming utility for LISTENAI CSK series chips."
-repository = "https://github.com/LISTENAI/cskburn-rs"
+repository = "https://github.com/LISTENAI/cskburn-desktop"
 license = "Apache-2.0"
 authors = ["xychen <xychen@listenai.com>"]
 edition = "2021"
