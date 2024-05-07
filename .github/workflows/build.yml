@@ -1,6 +1,8 @@
 on:
   push:
   pull_request:
+  release:
+    types: [published]
 
 jobs:
   build:
@@ -185,3 +187,85 @@ jobs:
         with:
           name: cskburn-desktop_updater_${{ github.run_id }}_${{ matrix.name }}
           path: updater/
+
+  publish-distribs:
+    needs: build
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download distributables
+        uses: actions/download-artifact@v4
+        with:
+          pattern: cskburn-desktop_distrib_*
+          path: distribs/
+          merge-multiple: true
+
+      - name: Upload assets to release
+        uses: csexton/release-asset-action@v3
+        with:
+          pattern: distribs/*
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-updaters:
+    needs: build
+    if: github.event_name == 'release' && !github.event.release.prerelease
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up ossutil
+        uses: manyuanrong/setup-ossutil@v2.0
+        with:
+          endpoint: ${{ secrets.ALIYUN_OSS_REGION }}.aliyuncs.com
+          access-key-id: ${{ secrets.ALIYUN_ACCESS_KEY_ID }}
+          access-key-secret: ${{ secrets.ALIYUN_ACCESS_KEY_SECRET }}
+
+      - name: Download updaters
+        uses: actions/download-artifact@v4
+        with:
+          pattern: cskburn-desktop_updater_*
+          path: updaters/
+          merge-multiple: true
+
+      - name: Generate metadata
+        id: metadata
+        shell: python
+        run: |
+          import json
+          import os
+
+          url_prefix = 'https://cdn.listenai.com/public/cskburn-desktop'
+
+          metadata = {
+            'version': '${{ github.event.release.tag_name }}',
+            'notes': ${{ toJson(github.event.release.body) }},
+            'pub_date': '${{ github.event.release.published_at }}',
+            'platforms': {},
+          }
+
+          platforms = ['darwin', 'linux', 'windows']
+          archs = ['aarch64', 'x86_64']
+
+          names = [f'{platform}-{arch}' for platform in platforms for arch in archs]
+
+          for updater in os.listdir('updaters'):
+            for name in names:
+              if name in updater and not updater.endswith('.sig'):
+                with open(os.path.join('updaters', f'{updater}.sig'), 'r') as f:
+                  signature = f.read().strip()
+
+                os.remove(os.path.join('updaters', f'{updater}.sig'))
+
+                metadata['platforms'][name] = {
+                  'signature': signature,
+                  'url': f'{url_prefix}/${{ github.event.release.tag_name }}/{updater}',
+                }
+
+          with open('latest.json', 'w') as f:
+            json.dump(metadata, f)
+
+      - name: Upload to OSS
+        run: |
+          ossutil cp -f latest.json \
+            oss://${{ secrets.ALIYUN_OSS_BUCKET }}/public/cskburn-desktop/
+
+          ossutil cp -r updaters/ \
+            oss://${{ secrets.ALIYUN_OSS_BUCKET }}/public/cskburn-desktop/${{ github.event.release.tag_name }}/
