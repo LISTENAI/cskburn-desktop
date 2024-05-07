@@ -9,23 +9,28 @@ jobs:
     strategy:
       matrix:
         include:
-          - platform: macos-latest
+          - name: darwin-aarch64
+            platform: macos-latest
             target: aarch64-apple-darwin
             bundles: [dmg, updater]
-          - platform: macos-latest
+          - name: darwin-x86_64
+            platform: macos-latest
             target: x86_64-apple-darwin
             bundles: [dmg, updater]
-          - platform: ubuntu-22.04
+          - name: linux-aarch64
+            platform: ubuntu-22.04
             target: aarch64-unknown-linux-gnu
             triple: aarch64-linux-gnu
             arch: arm64
             bundles: [deb]
-          - platform: ubuntu-22.04
+          - name: linux-x86_64
+            platform: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
             triple: x86_64-linux-gnu
             arch: amd64
             bundles: [deb, appimage, updater]
-          - platform: windows-latest
+          - name: windows-x86_64
+            platform: windows-latest
             target: x86_64-pc-windows-msvc
             bundles: [nsis, updater]
 
@@ -105,36 +110,78 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      - name: Decide target bundles
+        id: target
+        shell: python
+        run: |
+          from os import getenv
+
+          bundles = '${{ join(matrix.bundles, ',') }}'.split(',')
+          if not getenv('TAURI_SIGNING_PRIVATE_KEY'):
+            bundles = [bundle for bundle in bundles if bundle != 'updater']
+
+          bundles = ','.join(bundles)
+          print(f'bundles={bundles}')
+
+          with open(getenv('GITHUB_OUTPUT'), 'at') as f:
+            f.writelines(f'bundles={bundles}')
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: '${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}'
+
       - name: Build
         uses: tauri-apps/tauri-action@v0
         id: build
         with:
           args: >
             --target ${{ matrix.target }}
-            --bundles ${{ join(matrix.bundles, ',') }}
+            --bundles ${{ steps.target.outputs.bundles }}
         env:
           TAURI_SIGNING_PRIVATE_KEY: '${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}'
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ''
 
-      - name: Collect artifacts (Bash)
-        if: matrix.platform != 'windows-latest'
+      - name: Collect artifacts
+        shell: python
         run: |
-          mkdir -p artifacts
-          for artifact in ${{ join(fromJson(steps.build.outputs.artifactPaths), ' ') }}; do
-            mv $artifact artifacts/
-          done
+          import os
+          import json
+          import shutil
 
-      - name: Collect artifacts (PowerShell)
-        if: matrix.platform == 'windows-latest'
-        run: |
-          mkdir artifacts
-          $artifactPaths = ConvertFrom-Json '${{ steps.build.outputs.artifactPaths }}'
-          foreach ($artifact in $artifactPaths) {
-            Move-Item $artifact artifacts/
-          }
+          os.makedirs('distrib', exist_ok=True)
+          os.makedirs('updater', exist_ok=True)
 
-      - name: Archive artifacts
+          artifact_paths = '${{ steps.build.outputs.artifactPaths }}'.replace('\\', '\\\\')
+          name = '${{ matrix.name }}'
+
+          for artifact in json.loads(artifact_paths):
+            filename = os.path.basename(artifact)
+            sig_file = f'{artifact}.sig'
+
+            if filename.endswith('.dmg'):
+              shutil.move(artifact, os.path.join('distrib', f'cskburn-desktop_{name}.dmg'))
+            elif filename.endswith('.app.tar.gz'):
+              shutil.move(artifact, os.path.join('updater', f'cskburn-desktop_{name}.app.tar.gz'))
+              shutil.move(sig_file, os.path.join('updater', f'cskburn-desktop_{name}.app.tar.gz.sig'))
+            elif filename.endswith('.deb'):
+              shutil.move(artifact, os.path.join('distrib', f'cskburn-desktop_{name}.deb'))
+            elif filename.endswith('.AppImage'):
+              shutil.move(artifact, os.path.join('distrib', f'cskburn-desktop_{name}.AppImage'))
+            elif filename.endswith('.AppImage.tar.gz'):
+              shutil.move(artifact, os.path.join('updater', f'cskburn-desktop_{name}.AppImage.tar.gz'))
+              shutil.move(sig_file, os.path.join('updater', f'cskburn-desktop_{name}.AppImage.tar.gz.sig'))
+            elif filename.endswith('-setup.exe'):
+              shutil.move(artifact, os.path.join('distrib', f'cskburn-desktop_{name}-setup.exe'))
+            elif filename.endswith('-setup.nsis.zip'):
+              shutil.move(artifact, os.path.join('updater', f'cskburn-desktop_{name}-setup.nsis.zip'))
+              shutil.move(sig_file, os.path.join('updater', f'cskburn-desktop_{name}-setup.nsis.zip.sig'))
+
+      - name: Archive distributable
         uses: actions/upload-artifact@v4
         with:
-          name: cskburn-desktop-${{ matrix.target }}
-          path: artifacts/
+          name: cskburn-desktop_distrib_${{ github.run_id }}_${{ matrix.name }}
+          path: distrib/
+
+      - name: Archive updater
+        uses: actions/upload-artifact@v4
+        with:
+          name: cskburn-desktop_updater_${{ github.run_id }}_${{ matrix.name }}
+          path: updater/
