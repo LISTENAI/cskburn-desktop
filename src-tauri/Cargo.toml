@@ -1,6 +1,6 @@
 [package]
 name = "cskburn-desktop"
-version = "0.0.1"
+version = "0.1.0"
 description = "A programming utility for LISTENAI CSK series chips."
 repository = "https://github.com/LISTENAI/cskburn-desktop"
 license = "Apache-2.0"
