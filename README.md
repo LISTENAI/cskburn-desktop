@@ -5,6 +5,8 @@ cskburn-desktop
 
 聆思 CSK 系列芯片桌面烧录工具。
 
+![](screenshot.png)
+
 ## 系统要求
 
 * Windows：10 或以上
