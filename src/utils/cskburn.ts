@@ -30,6 +30,9 @@ export async function cskburn(
       '--chip', '6',
       '--verbose',
       '--chip-id',
+      '--probe-timeout', '1000',
+      '--reset-attempts', '2',
+      '--reset-delay', '100',
       ...args,
     ]);
 
