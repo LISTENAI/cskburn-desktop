@@ -13,14 +13,16 @@
     </n-flex>
 
     <n-flex align="center">
-      <n-element :class="$style.info" :style="{ width: '16em' }">
+      <n-skeleton v-if="busyForInfo" width="16em" />
+      <n-element v-else :class="$style.info" :style="{ width: '16em' }">
         Chip ID: <selectable-text selectable>{{ chipId || 'N/A' }}</selectable-text>
       </n-element>
-      <n-element :class="$style.info" :style="{ width: '16em' }">
+      <n-skeleton v-if="busyForInfo" width="16em" />
+      <n-element v-else :class="$style.info" :style="{ width: '16em' }">
         Flash ID: <selectable-text selectable>{{ flashInfo || 'N/A' }}</selectable-text>
       </n-element>
       <n-button secondary size="small" :disabled="selectedPort == null || busyForFlash" :loading="busyForInfo"
-        @click="fetchInfo">
+        :style="{ width: '6em' }" @click="fetchInfo">
         获取
       </n-button>
     </n-flex>
@@ -75,8 +77,10 @@ import {
   NFlex,
   NInput,
   NProgress,
+  NSkeleton,
   NSpin,
   NText,
+  useMessage,
 } from 'naive-ui';
 import { imageSize, type IFlashImage } from '@/utils/images';
 import { cskburn } from '@/utils/cskburn';
@@ -116,12 +120,14 @@ const busyForFlash = computed(() => status.value == FlashStatus.CONNECTING || st
 
 const readyToFlash = computed(() => selectedPort.value != null && image.value != null && !hasError.value);
 
+const message = useMessage();
+
 async function fetchInfo(): Promise<void> {
   chipId.value = null;
   flashId.value = null;
   flashSize.value = null;
 
-  await busyOn(cskburn(selectedPort.value!, 1500000, [], {
+  const result = await busyOn(cskburn(selectedPort.value!, 1500000, [], {
     onChipId(id) {
       chipId.value = id;
     },
@@ -130,6 +136,10 @@ async function fetchInfo(): Promise<void> {
       flashSize.value = size;
     },
   }), busyForInfo);
+
+  if (result.code != 0) {
+    message.error('获取信息失败');
+  }
 }
 
 const errors = computed(() => {

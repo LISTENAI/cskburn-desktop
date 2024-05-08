@@ -1,7 +1,9 @@
 <template>
   <n-config-provider :theme="darkMode ? darkTheme : null">
     <n-dialog-provider>
-      <App />
+      <n-message-provider>
+        <App />
+      </n-message-provider>
     </n-dialog-provider>
     <n-global-style />
   </n-config-provider>
@@ -13,6 +15,7 @@ import {
   NConfigProvider,
   NDialogProvider,
   NGlobalStyle,
+  NMessageProvider,
   darkTheme,
   useOsTheme,
 } from 'naive-ui';
