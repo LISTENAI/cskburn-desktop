@@ -286,7 +286,11 @@ function stopFlash(): void {
 </script>
 
 <style lang="scss" module>
-:global(html, body) {
+:global(body) {
+  overflow: hidden;
+  position: fixed;
+  width: 100vw;
+  height: 100vh;
   user-select: none;
   cursor: default;
 }
