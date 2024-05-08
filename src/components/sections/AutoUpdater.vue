@@ -20,7 +20,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { NButton, NCard, NFlex, NModal, NProgress, useDialog } from 'naive-ui';
 import { relaunch } from '@tauri-apps/plugin-process';
-import { check } from '@tauri-apps/plugin-updater';
+import { check, type Update } from '@tauri-apps/plugin-updater';
 
 const dialog = useDialog();
 
@@ -34,7 +34,16 @@ const percentage = computed(() => {
 });
 
 onMounted(async () => {
-  const update = await check();
+  let update: Update | null = null;
+
+  try {
+    update = await check();
+  } catch (error) {
+    console.error(error);
+    console.warn('Failed to check for updates');
+    return;
+  }
+
   if (update?.available) {
     dialog.create({
       title: `发现新版本 ${update.version}，是否更新？`,
