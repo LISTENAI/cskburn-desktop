@@ -1,6 +1,7 @@
 import { Command } from '@tauri-apps/plugin-shell';
 
 type ICSKBurnEventHandlers = Partial<{
+  onOutput: (output: string) => void;
   onWaitingForDevice: () => void;
   onEnteringUpdateMode: () => void;
   onChipId: (id: string) => void;
@@ -41,6 +42,7 @@ export async function cskburn(
     let currentIndex = 0;
 
     function handleOutput(output: string) {
+      opts?.onOutput?.(output);
       let match: RegExpMatchArray | null = null;
       if (output == 'Waiting for device...') {
         opts?.onWaitingForDevice?.();

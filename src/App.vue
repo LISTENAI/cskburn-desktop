@@ -30,7 +30,7 @@
     <partition-view v-model:image="image" :busy="busyForFlash" :progress="progressTable" :errors
       :style="{ flex: '1 1 auto' }" />
 
-    <n-flex align="center" :size="32">
+    <n-flex align="center">
       <n-flex align="center" :style="{ width: 'auto', flex: '1 1 auto' }">
         <template v-if="status == FlashStatus.CONNECTING">
           <n-spin size="small" />
@@ -47,11 +47,16 @@
           <n-text :class="$style.result" type="error">
             烧录异常
           </n-text>
-          <n-button secondary round size="small" @click="() => outputShown = !outputShown">
-            查看日志
-          </n-button>
         </template>
       </n-flex>
+
+      <n-button quaternary :type="outputShown ? 'primary' : 'default'" @click="() => outputShown = !outputShown">
+        <template #icon>
+          <n-icon>
+            <list-16-regular />
+          </n-icon>
+        </template>
+      </n-button>
 
       <n-button v-if="busyForFlash" size="large" :style="{ flex: '0 0 140px' }" @click="stopFlash">
         停止
@@ -62,10 +67,7 @@
       </n-button>
     </n-flex>
 
-    <n-element v-if="outputShown" :style="{ height: '200px' }">
-      <n-input type="textarea" :value="output" placeholder="" readonly :resizable="false"
-        :style="{ height: '100%', fontFamily: 'var(--font-family-mono)' }" />
-    </n-element>
+    <log-view v-if="outputShown" :logs="output.join('\n')" :style="{ height: '200px' }" />
   </n-flex>
 </template>
 
@@ -75,13 +77,14 @@ import {
   NButton,
   NElement,
   NFlex,
-  NInput,
+  NIcon,
   NProgress,
   NSkeleton,
   NSpin,
   NText,
   useMessage,
 } from 'naive-ui';
+import { List16Regular } from '@vicons/fluent';
 import { imageSize, type IFlashImage } from '@/utils/images';
 import { cskburn } from '@/utils/cskburn';
 
@@ -90,6 +93,7 @@ import { busyOn } from '@/composables/busyOn';
 import AutoUpdater from '@/components/sections/AutoUpdater.vue';
 import PortSelector from '@/components/sections/PortSelector.vue';
 import PartitionView, { type IProgress } from '@/components/sections/PartitionView.vue';
+import LogView from '@/components/sections/LogView.vue';
 
 import SelectableText from '@/components/common/SelectableText.vue';
 
@@ -126,8 +130,12 @@ async function fetchInfo(): Promise<void> {
   chipId.value = null;
   flashId.value = null;
   flashSize.value = null;
+  output.value.splice(0);
 
   const result = await busyOn(cskburn(selectedPort.value!, 1500000, [], {
+    onOutput(line) {
+      output.value.push(line);
+    },
     onChipId(id) {
       chipId.value = id;
     },
@@ -180,7 +188,7 @@ const errors = computed(() => {
 
 const hasError = computed(() => errors.value.some((error) => !!error));
 
-const output = ref('');
+const output = ref<string[]>([]);
 const outputShown = ref(false);
 
 const progress = ref<{ index: number, current: number } | null>(null);
@@ -244,7 +252,7 @@ async function startFlash(): Promise<void> {
   aborter = new AbortController();
 
   progress.value = null;
-  outputShown.value = false;
+  output.value.splice(0);
   status.value = FlashStatus.CONNECTING;
 
   // Workaround for cskburn bug that invalid addresses won't cause non-zero exit,
@@ -253,6 +261,9 @@ async function startFlash(): Promise<void> {
 
   const result = await cskburn(selectedPort.value!, 1500000, args, {
     signal: aborter.signal,
+    onOutput(line) {
+      output.value.push(line);
+    },
     onChipId(id) {
       chipId.value = id;
     },
@@ -275,7 +286,6 @@ async function startFlash(): Promise<void> {
     },
   });
 
-  output.value = result.output;
   status.value = (result.code == 0 && !mayHaveError) ? FlashStatus.SUCCESS : FlashStatus.ERROR;
 }
 
