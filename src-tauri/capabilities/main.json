@@ -10,7 +10,7 @@
     "event:default",
     "fs:default",
     {
-      "identifier": "fs:scope",
+      "identifier": "fs:allow-appcache-write",
       "allow": [
         "$APPCACHE/lpk_unpack",
         "$APPCACHE/lpk_unpack/*"
