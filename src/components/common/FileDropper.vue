@@ -11,6 +11,7 @@
 import { ref } from 'vue';
 import { NElement, NFlex } from 'naive-ui';
 import { TauriEvent } from '@tauri-apps/api/event';
+import type { DragDropPayload } from '@tauri-apps/api/window';
 import { useListen } from '@/composables/tauri/useListen';
 
 const props = defineProps<{
@@ -32,8 +33,7 @@ useListen(TauriEvent.DROP_CANCELLED, () => {
   dropping.value = false;
 });
 
-useListen<{ paths: string[] }>(TauriEvent.DROP, (event) => {
-  console.log(event);
+useListen<DragDropPayload>(TauriEvent.DROP, (event) => {
   dropping.value = false;
   if (props.disabled) return;
   emit('file-drop', event.payload.paths);

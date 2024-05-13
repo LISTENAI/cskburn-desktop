@@ -85,11 +85,13 @@ import {
   useMessage,
 } from 'naive-ui';
 import { getCurrent, ProgressBarStatus, UserAttentionType } from '@tauri-apps/api/window';
+import { confirm } from '@tauri-apps/plugin-dialog';
 import { List16Regular } from '@vicons/fluent';
 import { imageSize, type IFlashImage } from '@/utils/images';
 import { cskburn, type ICSKBurnResult } from '@/utils/cskburn';
 
 import { busyOn } from '@/composables/busyOn';
+import { useListen } from '@/composables/tauri/useListen';
 
 import AutoUpdater from '@/components/sections/AutoUpdater.vue';
 import PortSelector from '@/components/sections/PortSelector.vue';
@@ -370,6 +372,20 @@ watch([progress, status], async () => {
       break;
   }
 });
+
+useListen(() => getCurrent().onCloseRequested(async (event) => {
+  if (busyForFlash.value) {
+    const confirmed = await confirm('正在烧录，退出软件会导致烧录被终止。确定要退出吗？', {
+      okLabel: '确定',
+      cancelLabel: '取消',
+    });
+    if (confirmed) {
+      stopFlash();
+    } else {
+      event.preventDefault();
+    }
+  }
+}));
 </script>
 
 <style lang="scss" module>

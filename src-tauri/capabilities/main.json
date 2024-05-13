@@ -6,6 +6,7 @@
     "main"
   ],
   "permissions": [
+    "dialog:allow-confirm",
     "dialog:allow-open",
     "event:default",
     "fs:default",
@@ -31,6 +32,7 @@
     "shell:allow-kill",
     "process:allow-restart",
     "updater:default",
+    "window:allow-destroy",
     "window:allow-request-user-attention",
     "window:allow-set-progress-bar"
   ]
