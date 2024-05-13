@@ -31,6 +31,7 @@
     "shell:allow-kill",
     "process:allow-restart",
     "updater:default",
+    "window:allow-request-user-attention",
     "window:allow-set-progress-bar"
   ]
 }

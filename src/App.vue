@@ -84,7 +84,7 @@ import {
   NText,
   useMessage,
 } from 'naive-ui';
-import { getCurrent, ProgressBarStatus } from '@tauri-apps/api/window';
+import { getCurrent, ProgressBarStatus, UserAttentionType } from '@tauri-apps/api/window';
 import { List16Regular } from '@vicons/fluent';
 import { imageSize, type IFlashImage } from '@/utils/images';
 import { cskburn, type ICSKBurnResult } from '@/utils/cskburn';
@@ -360,6 +360,13 @@ watch([progress, status], async () => {
       await getCurrent().setProgressBar({
         status: ProgressBarStatus.None,
       });
+      await getCurrent().requestUserAttention(UserAttentionType.Informational);
+      break;
+    case FlashStatus.ERROR:
+      await getCurrent().setProgressBar({
+        status: ProgressBarStatus.Error,
+      });
+      await getCurrent().requestUserAttention(UserAttentionType.Critical);
       break;
   }
 });
