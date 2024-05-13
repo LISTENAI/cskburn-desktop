@@ -84,6 +84,7 @@ import {
   NText,
   useMessage,
 } from 'naive-ui';
+import { getCurrent, ProgressBarStatus } from '@tauri-apps/api/window';
 import { List16Regular } from '@vicons/fluent';
 import { imageSize, type IFlashImage } from '@/utils/images';
 import { cskburn } from '@/utils/cskburn';
@@ -293,6 +294,29 @@ function stopFlash(): void {
   status.value = FlashStatus.STOPPED;
   aborter?.abort();
 }
+
+watch([progress, status], async () => {
+  switch (status.value) {
+    case FlashStatus.CONNECTING:
+      await getCurrent().setProgressBar({
+        status: ProgressBarStatus.Indeterminate,
+        progress: 0,
+      });
+      break;
+    case FlashStatus.FLASHING:
+      await getCurrent().setProgressBar({
+        status: ProgressBarStatus.Normal,
+        progress: Math.round(progressPct.value ?? 0),
+      });
+      break;
+    case FlashStatus.STOPPED:
+    case FlashStatus.SUCCESS:
+      await getCurrent().setProgressBar({
+        status: ProgressBarStatus.None,
+      });
+      break;
+  }
+});
 </script>
 
 <style lang="scss" module>

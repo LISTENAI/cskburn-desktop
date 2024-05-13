@@ -30,6 +30,7 @@
     },
     "shell:allow-kill",
     "process:allow-restart",
-    "updater:default"
+    "updater:default",
+    "window:allow-set-progress-bar"
   ]
 }
