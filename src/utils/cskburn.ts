@@ -17,6 +17,7 @@ type ICSKBurnEventHandlers = Partial<{
 
 export interface ICSKBurnResult {
   code: number | null;
+  signal: number | null;
   output: string;
 }
 
@@ -83,7 +84,7 @@ export async function cskburn(
     });
 
     command.once('close', (data) => {
-      resolve({ code: data.code, output: outputs.join('') })
+      resolve({ code: data.code, signal: data.signal, output: outputs.join('') })
     });
 
     command.once('error', (data) => {

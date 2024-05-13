@@ -87,7 +87,7 @@ import {
 import { getCurrent, ProgressBarStatus } from '@tauri-apps/api/window';
 import { List16Regular } from '@vicons/fluent';
 import { imageSize, type IFlashImage } from '@/utils/images';
-import { cskburn } from '@/utils/cskburn';
+import { cskburn, type ICSKBurnResult } from '@/utils/cskburn';
 
 import { busyOn } from '@/composables/busyOn';
 
@@ -133,21 +133,38 @@ async function fetchInfo(): Promise<void> {
   flashSize.value = null;
   output.value.splice(0);
 
-  const result = await busyOn(cskburn(selectedPort.value!, 1500000, [], {
-    onOutput(line) {
-      output.value.push(line);
-    },
-    onChipId(id) {
-      chipId.value = id;
-    },
-    onFlashId(id, size) {
-      flashId.value = id;
-      flashSize.value = size;
-    },
-  }), busyForInfo);
+  let result: ICSKBurnResult | undefined;
+  let error: unknown;
 
-  if (result.code != 0) {
+  try {
+    result = await busyOn(cskburn(selectedPort.value!, 1500000, [], {
+      onOutput(line) {
+        output.value.push(line);
+      },
+      onChipId(id) {
+        chipId.value = id;
+      },
+      onFlashId(id, size) {
+        flashId.value = id;
+        flashSize.value = size;
+      },
+    }), busyForInfo);
+  } catch (e) {
+    console.error(e);
+    error = e;
+  }
+
+  if (error) {
     message.error('获取信息失败');
+    output.value.push(`[获取信息失败: 发生异常 ${error}]`);
+  } else if (result?.signal != null) {
+    message.error('获取信息失败');
+    output.value.push(`[获取信息失败: 终止信号 ${result.signal}]`);
+  } else if (result?.code != null && result.code != 0) {
+    message.error('获取信息失败');
+    output.value.push(`[获取信息失败: 退出码 ${result.code}]`);
+  } else {
+    output.value.push('[获取信息成功]');
   }
 }
 
@@ -260,34 +277,63 @@ async function startFlash(): Promise<void> {
   // while probing retries prints `ERROR:`.
   let mayHaveError = false;
 
-  const result = await cskburn(selectedPort.value!, 1500000, args, {
-    signal: aborter.signal,
-    onOutput(line) {
-      output.value.push(line);
-    },
-    onChipId(id) {
-      chipId.value = id;
-    },
-    onFlashId(id, size) {
-      flashId.value = id;
-      flashSize.value = size;
-    },
-    onPartition(index, _total, _addr) {
-      progress.value = { index, current: 0 };
-      status.value = FlashStatus.FLASHING;
-    },
-    onProgress(index, current) {
-      progress.value = { index, current };
-    },
-    onError(_error) {
-      mayHaveError = true;
-    },
-    onFinished() {
-      mayHaveError = false;
-    },
-  });
+  let result: ICSKBurnResult | undefined;
+  let error: unknown;
 
-  status.value = (result.code == 0 && !mayHaveError) ? FlashStatus.SUCCESS : FlashStatus.ERROR;
+  try {
+    result = await cskburn(selectedPort.value!, 1500000, args, {
+      signal: aborter.signal,
+      onOutput(line) {
+        output.value.push(line);
+      },
+      onChipId(id) {
+        chipId.value = id;
+      },
+      onFlashId(id, size) {
+        flashId.value = id;
+        flashSize.value = size;
+      },
+      onPartition(index, _total, _addr) {
+        progress.value = { index, current: 0 };
+        status.value = FlashStatus.FLASHING;
+      },
+      onProgress(index, current) {
+        progress.value = { index, current };
+      },
+      onError(_error) {
+        mayHaveError = true;
+      },
+      onFinished() {
+        mayHaveError = false;
+      },
+    });
+  } catch (e) {
+    console.error(e);
+    error = e;
+  }
+
+  // @ts-ignore
+  const stoppedManually = status.value == FlashStatus.STOPPED;
+
+  if (error) {
+    status.value = FlashStatus.ERROR;
+    output.value.push(`[烧录失败: 发生异常 ${error}]`);
+  } else if (stoppedManually) {
+    // status 已经被设置为 STOPPED，这里不需要再次设置
+    output.value.push('[烧录停止]');
+  } else if (result?.signal != null) {
+    status.value = FlashStatus.ERROR;
+    output.value.push(`[烧录失败: 终止信号 ${result.signal}]`);
+  } else if (result?.code != null && result.code != 0) {
+    status.value = FlashStatus.ERROR;
+    output.value.push(`[烧录失败: 退出码 ${result.code}]`);
+  } else if (mayHaveError) {
+    status.value = FlashStatus.ERROR;
+    output.value.push('[烧录失败: 发生错误]');
+  } else {
+    status.value = FlashStatus.SUCCESS;
+    output.value.push('[烧录成功]');
+  }
 }
 
 function stopFlash(): void {
