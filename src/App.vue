@@ -6,26 +6,31 @@
   }">
     <auto-updater />
 
-    <n-flex align="center">
-      <div>端口:</div>
-      <port-selector v-model:port="selectedPort" :disabled="busyForInfo || busyForFlash"
-        :style="{ flex: '0 1 300px' }" />
-    </n-flex>
-
-    <n-flex align="center">
-      <n-skeleton v-if="busyForInfo" width="16em" />
-      <n-element v-else :class="$style.info" :style="{ width: '16em' }">
-        Chip ID: <selectable-text selectable>{{ chipId || 'N/A' }}</selectable-text>
-      </n-element>
-      <n-skeleton v-if="busyForInfo" width="16em" />
-      <n-element v-else :class="$style.info" :style="{ width: '16em' }">
-        Flash ID: <selectable-text selectable>{{ flashInfo || 'N/A' }}</selectable-text>
-      </n-element>
-      <n-button secondary size="small" :disabled="selectedPort == null || busyForFlash" :loading="busyForInfo"
-        :style="{ width: '6em' }" @click="fetchInfo">
-        获取
-      </n-button>
-    </n-flex>
+    <n-spin :show="busyForInfo" :style="{ width: '600px' }">
+      <n-descriptions :column="2" label-placement="left" :label-class="$style.infoLabel">
+        <n-descriptions-item label="端口" :span="2" :label-style="{ verticalAlign: 'middle' }"
+          :content-style="{ verticalAlign: 'middle' }">
+          <n-space>
+            <port-selector v-model:port="selectedPort" :disabled="busyForInfo || busyForFlash"
+              :style="{ width: '300px' }" />
+            <n-button secondary :disabled="selectedPort == null || busyForInfo || busyForFlash"
+              :style="{ width: '6em' }" @click="fetchInfo">
+              获取信息
+            </n-button>
+          </n-space>
+        </n-descriptions-item>
+        <n-descriptions-item label="Chip ID" :content-style="{ width: '12em' }">
+          <n-element :class="$style.infoText">
+            <selectable-text selectable>{{ chipId || 'N/A' }}</selectable-text>
+          </n-element>
+        </n-descriptions-item>
+        <n-descriptions-item label="Flash ID" :content-style="{ width: '12em' }">
+          <n-element :class="$style.infoText">
+            <selectable-text selectable>{{ flashInfo || 'N/A' }}</selectable-text>
+          </n-element>
+        </n-descriptions-item>
+      </n-descriptions>
+    </n-spin>
 
     <partition-view v-model:image="image" :busy="busyForFlash" :progress="progressTable" :errors
       :style="{ flex: '1 1 auto' }" />
@@ -75,11 +80,13 @@
 import { computed, ref, watch } from 'vue';
 import {
   NButton,
+  NDescriptions,
+  NDescriptionsItem,
   NElement,
   NFlex,
   NIcon,
+  NSpace,
   NProgress,
-  NSkeleton,
   NSpin,
   NText,
   useMessage,
@@ -398,7 +405,13 @@ useListen(() => getCurrent().onCloseRequested(async (event) => {
   cursor: default;
 }
 
-.info {
+.infoLabel {
+  display: inline-block;
+  width: 6em;
+  text-align: right;
+}
+
+.infoText {
   font-family: var(--font-family-mono);
 }
 
