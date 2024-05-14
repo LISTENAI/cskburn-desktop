@@ -46,8 +46,9 @@
         <template #column-name="{ data }">
           <field-base selectable>{{ data.file.name }}</field-base>
         </template>
-        <template #column-addr="{ data }">
-          <field-addr v-model:addr="data.addr" :disabled="props.busy" />
+        <template #column-addr="{ index }">
+          <field-addr v-model:value="state![index].addr" :placeholder="toHex(image.partitions[index].addr)"
+            :disabled="props.busy" @blur="() => handleAddrInputBlur(index)" />
         </template>
         <template #column-size="{ data }">
           <field-base>
@@ -102,7 +103,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import {
   NButton,
   NElement,
@@ -121,6 +122,7 @@ import { isEmpty } from 'radash';
 import { open } from '@tauri-apps/plugin-dialog';
 
 import { processFiles, type IFlashImage } from '@/utils/images';
+import { fromHex, toHex } from '@/utils/hex';
 import { busyOn } from '@/composables/busyOn';
 
 import FileDropper from '@/components/common/FileDropper.vue';
@@ -136,6 +138,10 @@ export interface IProgress {
   index: number;
   state: 'progress' | 'stopped' | 'error';
   current: number;
+}
+
+export interface IPartitionState {
+  addr: string;
 }
 
 const image = defineModel<IFlashImage | null>('image');
@@ -157,6 +163,27 @@ async function handleFiles(files: string[]) {
   } else {
     image.value = { ...image.value, partitions: image.value.partitions.concat(parsed.partitions) };
   }
+}
+
+const state = ref<IPartitionState[] | null>(null);
+watch(image, (image) => {
+  state.value = image?.format == 'bin' ? image.partitions.map((part) => ({
+    addr: toHex(part.addr),
+  })) : null;
+}, { immediate: true });
+
+function handleAddrInputBlur(index: number) {
+  if (image.value?.format != 'bin' || state.value == null) return;
+
+  const addr = fromHex(state.value[index].addr);
+  if (typeof addr != 'number') {
+    state.value[index].addr = toHex(image.value.partitions[index].addr);
+    return;
+  }
+
+  const partitions = [...image.value.partitions];
+  partitions[index] = { ...partitions[index], addr };
+  image.value = { ...image.value, partitions };
 }
 
 async function handleFilePick() {

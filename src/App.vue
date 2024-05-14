@@ -249,14 +249,12 @@ const progressPct = computed(() => {
     return 0;
   }
 
+  const total = imageSize(image.value);
+  const wrote = imageSize(image.value, progress.value.index);
   if (image.value.format == 'bin') {
-    const total = imageSize(image.value);
-    const wrote = imageSize(image.value, progress.value.index);
     const current = image.value.partitions[progress.value.index].file.size * progress.value.current;
     return (wrote + current) / total * 100;
   } else if (image.value.format == 'hex') {
-    const total = imageSize(image.value);
-    const wrote = imageSize(image.value, progress.value.index);
     const current = image.value.sections[progress.value.index].size * progress.value.current;
     return (wrote + current) / total * 100;
   }
