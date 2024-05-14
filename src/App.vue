@@ -8,7 +8,7 @@
 
     <n-spin :show="busyForInfo" :style="{ width: '600px' }">
       <n-descriptions :column="2" label-placement="left" :label-class="$style.infoLabel">
-        <n-descriptions-item label="端口" :span="2" :label-style="{ verticalAlign: 'middle' }"
+        <n-descriptions-item label="串口" :span="2" :label-style="{ verticalAlign: 'middle' }"
           :content-style="{ verticalAlign: 'middle' }">
           <n-space>
             <port-selector v-model:port="selectedPort" :disabled="busyForInfo || busyForFlash"

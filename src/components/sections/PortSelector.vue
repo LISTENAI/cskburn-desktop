@@ -1,13 +1,15 @@
 <template>
   <n-select v-model:value="selectedPort" :options="availableSelections" :consistent-menu-width="false"
-    :disabled="isEmpty(availableSelections) || props.disabled" placeholder="空"
-    :style="{ fontFamily: themeVars.fontFamilyMono }" />
+    :disabled="props.disabled" placeholder="请选择串口" :style="{ fontFamily: themeVars.fontFamilyMono }">
+    <template #empty>
+      <n-empty size="small" description="未找到任何串口设备" :show-icon="false" />
+    </template>
+  </n-select>
 </template>
 
 <script lang="ts" setup>
 import { computed, watch } from 'vue';
-import { NSelect, useThemeVars, type SelectOption } from 'naive-ui';
-import { isEmpty } from 'radash';
+import { NEmpty, NSelect, useThemeVars, type SelectOption } from 'naive-ui';
 import { invoke } from '@tauri-apps/api/core';
 
 import { useIntervally } from '@/composables/window/useIntervally';
@@ -29,12 +31,8 @@ const availableSelections = computed(() => (availablePorts.value ?? []).map((por
 }) as SelectOption));
 
 watch(availablePorts, (ports) => {
-  if (selectedPort.value) {
-    if (!ports?.includes(selectedPort.value)) {
-      selectedPort.value = ports?.[0] ?? null;
-    }
-  } else {
-    selectedPort.value = ports?.[0] ?? null;
+  if (selectedPort.value && !ports?.includes(selectedPort.value)) {
+    selectedPort.value = null;
   }
 });
 </script>
