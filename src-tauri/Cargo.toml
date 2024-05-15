@@ -26,3 +26,6 @@ serialport = "4.3.0"
 [features]
 # This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!
 custom-protocol = ["tauri/custom-protocol"]
+
+[patch.crates-io]
+wry = { git = "https://github.com/xingrz/wry.git", branch = "hotfix-v0.39.3-dnd" }
