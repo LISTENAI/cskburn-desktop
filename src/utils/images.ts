@@ -1,7 +1,6 @@
-import { basename } from '@tauri-apps/api/path';
-import { stat } from '@tauri-apps/plugin-fs';
 import { sum } from 'radash';
 
+import { LocalFile, type IFileRef } from './file';
 import { readLpk } from './readLpk';
 import { readHex, type ISection } from './readHex';
 
@@ -19,19 +18,12 @@ export interface IPartition {
   file: IFileRef;
 }
 
-export interface IFileRef {
-  path: string;
-  name: string;
-  size: number;
-  free: () => Promise<void>;
-}
-
-export async function processFiles(paths: string[]): Promise<IFlashImage> {
+export async function readImage(paths: string[]): Promise<IFlashImage> {
   const hexFile = paths.find((path) => path.toLowerCase().endsWith('.hex'));
   if (hexFile) {
     return {
       format: 'hex',
-      file: await LocalBinFile.from(hexFile),
+      file: await LocalFile.from(hexFile),
       sections: await readHex(hexFile),
     };
   }
@@ -44,7 +36,7 @@ export async function processFiles(paths: string[]): Promise<IFlashImage> {
     } else {
       partitions.push({
         addr: 0,
-        file: await LocalBinFile.from(path),
+        file: await LocalFile.from(path),
       });
     }
   }
@@ -52,28 +44,18 @@ export async function processFiles(paths: string[]): Promise<IFlashImage> {
   return { format: 'bin', partitions };
 }
 
+export async function cleanUpImage(image: IFlashImage): Promise<void> {
+  if (image.format == 'hex') {
+    await image.file.free();
+  } else {
+    await Promise.all(image.partitions.map((part) => part.file.free()));
+  }
+}
+
 export function imageSize(image: IFlashImage, toIndex?: number): number {
   if (image.format == 'hex') {
     return sum(image.sections.slice(0, toIndex), (section) => section.size);
   } else {
     return sum(image.partitions.slice(0, toIndex), (part) => part.file.size);
-  }
-}
-
-class LocalBinFile implements IFileRef {
-  static async from(path: string): Promise<LocalBinFile> {
-    const name = await basename(path);
-    const { size } = await stat(path);
-    return new LocalBinFile(path, name, size);
-  }
-
-  private constructor(
-    readonly path: string,
-    readonly name: string,
-    readonly size: number) {
-  }
-
-  async free(): Promise<void> {
-    // do nothing
   }
 }

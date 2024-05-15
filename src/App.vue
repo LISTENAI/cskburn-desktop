@@ -96,6 +96,7 @@ import { confirm } from '@tauri-apps/plugin-dialog';
 import { List16Regular } from '@vicons/fluent';
 import { imageSize, type IFlashImage } from '@/utils/images';
 import { cskburn, type ICSKBurnResult } from '@/utils/cskburn';
+import { cleanUpTmpFiles } from '@/utils/file';
 
 import { busyOn } from '@/composables/busyOn';
 import { useListen } from '@/composables/tauri/useListen';
@@ -388,8 +389,11 @@ useListen(() => getCurrent().onCloseRequested(async (event) => {
       stopFlash();
     } else {
       event.preventDefault();
+      return;
     }
   }
+
+  await cleanUpTmpFiles();
 }));
 </script>
 

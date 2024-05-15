@@ -121,7 +121,7 @@ import {
 import { isEmpty } from 'radash';
 import { open } from '@tauri-apps/plugin-dialog';
 
-import { processFiles, type IFlashImage } from '@/utils/images';
+import { cleanUpImage, readImage, type IFlashImage } from '@/utils/images';
 import { fromHex, toHex } from '@/utils/hex';
 import { busyOn } from '@/composables/busyOn';
 
@@ -154,10 +154,10 @@ const props = defineProps<{
 
 const parsing = ref(false);
 async function handleFiles(files: string[]) {
-  const parsed = await busyOn(processFiles(files), parsing);
+  const parsed = await busyOn(readImage(files), parsing);
   if (parsed.format == 'hex' || parsed.format != image.value?.format) {
-    if (image.value?.format == 'bin') {
-      await Promise.all(image.value.partitions.map((part) => part.file.free()));
+    if (image.value) {
+      cleanUpImage(image.value);
     }
     image.value = parsed;
   } else {

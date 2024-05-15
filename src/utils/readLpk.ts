@@ -1,14 +1,10 @@
 import promisify from 'pify';
 import { unzip as _unzip } from 'fflate';
 import md5 from 'md5';
-import { mkdir, readFile, remove, writeFile } from '@tauri-apps/plugin-fs';
-import {
-  appCacheDir,
-  basename,
-  join,
-} from '@tauri-apps/api/path';
+import { readFile } from '@tauri-apps/plugin-fs';
 
-import type { IFileRef, IPartition } from './images';
+import { TmpFile } from './file';
+import type { IPartition } from './images';
 import { UserError } from '@/userError';
 
 const unzip = promisify(_unzip);
@@ -61,35 +57,11 @@ export async function readLpk(path: string): Promise<IPartition[]> {
 
     partitions.push({
       addr: addr,
-      file: await LpkBinFile.from(path, zip[path]),
+      file: await TmpFile.from(path, zip[path]),
     });
   }
 
   return partitions;
-}
-
-class LpkBinFile implements IFileRef {
-  static async from(pseudoPath: string, content: Uint8Array): Promise<LpkBinFile> {
-    const unpackDir = await join(await appCacheDir(), 'lpk_unpack');
-    await mkdir(unpackDir, { recursive: true });
-
-    const path = await join(unpackDir, generateTempFileName());
-    const name = await basename(pseudoPath);
-
-    await writeFile(path, content);
-
-    return new LpkBinFile(path, name, content.length);
-  }
-
-  private constructor(
-    readonly path: string,
-    readonly name: string,
-    readonly size: number) {
-  }
-
-  async free(): Promise<void> {
-    await remove(this.path);
-  }
 }
 
 function parseAddr(addr: string): number | undefined {
@@ -100,8 +72,4 @@ function parseAddr(addr: string): number | undefined {
   } else {
     return undefined;
   }
-}
-
-function generateTempFileName(): string {
-  return `${Math.random().toString(36).substring(2)}.bin`;
 }

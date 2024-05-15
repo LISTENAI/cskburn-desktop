@@ -13,8 +13,8 @@
     {
       "identifier": "fs:allow-appcache-write",
       "allow": [
-        "$APPCACHE/lpk_unpack",
-        "$APPCACHE/lpk_unpack/*"
+        "$APPCACHE/unpacked",
+        "$APPCACHE/unpacked/*"
       ]
     },
     "path:default",
