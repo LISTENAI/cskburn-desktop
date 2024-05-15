@@ -36,7 +36,7 @@ export async function cskburn(
       '--reset-attempts', '2',
       '--reset-delay', '100',
       ...args,
-    ]);
+    ], { encoding: 'raw' });
 
     const outputs: string[] = [];
 
@@ -73,14 +73,16 @@ export async function cskburn(
       }
     }
 
-    command.stdout.on('data', (data: string) => {
-      outputs.push(data);
-      handleOutput(data.trim());
+    command.stdout.on('data', (data: Uint8Array) => {
+      const line = new TextDecoder('utf-8').decode(new Uint8Array(data));
+      outputs.push(line);
+      handleOutput(line.trim());
     });
 
-    command.stderr.on('data', (data: string) => {
-      outputs.push(data);
-      handleOutput(data.trim());
+    command.stderr.on('data', (data: Uint8Array) => {
+      const line = new TextDecoder('utf-8').decode(new Uint8Array(data));
+      outputs.push(line);
+      handleOutput(line.trim());
     });
 
     command.once('close', (data) => {
