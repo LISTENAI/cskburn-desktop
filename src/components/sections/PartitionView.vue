@@ -20,10 +20,29 @@
         <n-flex :class="$style.hexFile" vertical align="center" justify="center" :wrap="false"
           :style="{ height: '100%' }">
           <selectable-text :class="$style.name" selectable>{{ image.file.name }}</selectable-text>
-          <span>(<file-size :class="$style.size" :size="image.file.size" />)</span>
-          <n-text v-if="props.errors[0]" type="error">
-            {{ props.errors[0] }}
-          </n-text>
+          <n-space>
+            <file-size :class="$style.size" :size="image.file.size" />
+            <template v-if="props.errors[0]">
+              <span>-</span>
+              <n-text type="error">{{ props.errors[0] }}</n-text>
+            </template>
+            <template v-if="props.progress.status == FlashStatus.STOPPED">
+              <span>-</span>
+              <n-text type="error">已停止</n-text>
+            </template>
+            <template v-else-if="props.progress.status == FlashStatus.ERROR">
+              <span>-</span>
+              <n-text type="error">异常</n-text>
+            </template>
+            <template v-else-if="props.progress.status == FlashStatus.FLASHING">
+              <span>-</span>
+              <n-text>{{ (props.progress.progress * 100).toFixed(1) }}%</n-text>
+            </template>
+            <template v-else-if="props.progress.status == FlashStatus.SUCCESS">
+              <span>-</span>
+              <n-text type="success">已完成</n-text>
+            </template>
+          </n-space>
           <n-button secondary :disabled="props.busy" :style="{ marginTop: '16px' }" @click="() => image = null">
             重新选择
           </n-button>
@@ -70,22 +89,20 @@
               <span>{{ props.errors[index] }}</span>
             </n-popover>
           </template>
-          <template v-else-if="props.progress == null || props.progress.index < index">
-            <n-text>未开始</n-text>
+          <template v-else-if="props.progress.perPartition?.[index]?.status == FlashStatus.STOPPED">
+            <n-text type="error">已停止</n-text>
           </template>
-          <template v-else-if="props.progress.index == index">
-            <template v-if="props.progress.state == 'stopped'">
-              <n-text type="error">已停止</n-text>
-            </template>
-            <template v-else-if="props.progress.state == 'error'">
-              <n-text type="error">异常</n-text>
-            </template>
-            <template v-else>
-              <field-progress :progress="props.progress.current" />
-            </template>
+          <template v-else-if="props.progress.perPartition?.[index]?.status == FlashStatus.ERROR">
+            <n-text type="error">异常</n-text>
           </template>
-          <template v-else-if="props.progress.index > index">
+          <template v-else-if="props.progress.perPartition?.[index]?.status == FlashStatus.FLASHING">
+            <field-progress :progress="props.progress.perPartition[index]?.progress ?? 0" />
+          </template>
+          <template v-else-if="props.progress.perPartition?.[index]?.status == FlashStatus.SUCCESS">
             <field-progress :progress="1" />
+          </template>
+          <template v-else>
+            <n-text>未开始</n-text>
           </template>
         </template>
         <template #column-actions="{ index }">
@@ -110,6 +127,7 @@ import {
   NFlex,
   NIcon,
   NPopover,
+  NSpace,
   NSpin,
   NText,
   useMessage,
@@ -126,6 +144,7 @@ import { UserError } from '@/userError';
 import { cleanUpImage, readImage, type IFlashImage } from '@/utils/images';
 import { fromHex, toHex } from '@/utils/hex';
 import { busyOn } from '@/composables/busyOn';
+import { FlashStatus, type IFlashProgress } from '@/composables/progress';
 
 import FileDropper from '@/components/common/FileDropper.vue';
 import FileSize from '@/components/common/FileSize.vue';
@@ -136,12 +155,6 @@ import FieldBase from '@/components/datatable/FieldBase.vue';
 import FieldAddr from '@/components/datatable/FieldAddr.vue';
 import FieldProgress from '@/components/datatable/FieldProgress.vue';
 
-export interface IProgress {
-  index: number;
-  state: 'progress' | 'stopped' | 'error';
-  current: number;
-}
-
 export interface IPartitionState {
   addr: string;
 }
@@ -150,7 +163,7 @@ const image = defineModel<IFlashImage | null>('image');
 
 const props = defineProps<{
   busy: boolean;
-  progress: IProgress | null;
+  progress: IFlashProgress;
   errors: (string | undefined)[];
 }>();
 

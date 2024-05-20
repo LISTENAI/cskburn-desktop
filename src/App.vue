@@ -32,8 +32,7 @@
       </n-descriptions>
     </n-spin>
 
-    <partition-view v-model:image="image" :busy="busyForFlash" :progress="progressTable" :errors
-      :style="{ flex: '1 1 auto' }" />
+    <partition-view v-model:image="image" :busy="busyForFlash" :progress :errors :style="{ flex: '1 1 auto' }" />
 
     <n-flex align="center">
       <n-flex align="center" :style="{ width: 'auto', flex: '1 1 auto' }">
@@ -41,7 +40,7 @@
           <n-spin size="small" />
         </template>
         <template v-else-if="status == FlashStatus.FLASHING">
-          <n-progress type="line" :percentage="progressPct" :show-indicator="false" />
+          <n-progress type="line" :percentage="progress.progress * 100" :show-indicator="false" />
         </template>
         <template v-else-if="status == FlashStatus.SUCCESS">
           <n-text :class="$style.result" type="success">
@@ -99,11 +98,12 @@ import { cskburn, type ICSKBurnResult } from '@/utils/cskburn';
 import { cleanUpTmpFiles } from '@/utils/file';
 
 import { busyOn } from '@/composables/busyOn';
+import { FlashStatus, useFlashProgress } from './composables/progress';
 import { useListen } from '@/composables/tauri/useListen';
 
 import AutoUpdater from '@/components/sections/AutoUpdater.vue';
 import PortSelector from '@/components/sections/PortSelector.vue';
-import PartitionView, { type IProgress } from '@/components/sections/PartitionView.vue';
+import PartitionView from '@/components/sections/PartitionView.vue';
 import LogView from '@/components/sections/LogView.vue';
 
 import SelectableText from '@/components/common/SelectableText.vue';
@@ -121,15 +121,9 @@ const flashInfo = computed(() => {
   }
 });
 
-enum FlashStatus {
-  CONNECTING,
-  FLASHING,
-  STOPPED,
-  SUCCESS,
-  ERROR,
-}
+const status = ref<FlashStatus | null>(null);
+const progress = useFlashProgress(image, status);
 
-const status = ref<null | FlashStatus>(null);
 const busyForInfo = ref(false);
 const busyForFlash = computed(() => status.value == FlashStatus.CONNECTING || status.value == FlashStatus.FLASHING);
 
@@ -219,46 +213,9 @@ const hasError = computed(() => errors.value.some((error) => !!error));
 const output = ref<string[]>([]);
 const outputShown = ref(false);
 
-const progress = ref<{ index: number, current: number } | null>(null);
-
 watch(image, () => {
-  progress.value = null;
+  progress.current = null;
   status.value = null;
-});
-
-const progressTable = computed<IProgress | null>(() => {
-  if (progress.value == null) {
-    return null;
-  }
-
-  const state = ((): IProgress['state'] => {
-    switch (status.value) {
-      case FlashStatus.STOPPED:
-        return 'stopped';
-      case FlashStatus.ERROR:
-        return 'error';
-      default:
-        return 'progress';
-    }
-  })();
-
-  return { ...progress.value, state };
-});
-
-const progressPct = computed(() => {
-  if (image.value == null || progress.value == null) {
-    return 0;
-  }
-
-  const total = imageSize(image.value);
-  const wrote = imageSize(image.value, progress.value.index);
-  if (image.value.format == 'bin') {
-    const current = image.value.partitions[progress.value.index].file.size * progress.value.current;
-    return (wrote + current) / total * 100;
-  } else if (image.value.format == 'hex') {
-    const current = image.value.sections[progress.value.index].size * progress.value.current;
-    return (wrote + current) / total * 100;
-  }
 });
 
 let aborter: AbortController | undefined;
@@ -277,7 +234,7 @@ async function startFlash(): Promise<void> {
 
   aborter = new AbortController();
 
-  progress.value = null;
+  progress.current = null;
   output.value.splice(0);
   status.value = FlashStatus.CONNECTING;
 
@@ -302,11 +259,11 @@ async function startFlash(): Promise<void> {
         flashSize.value = size;
       },
       onPartition(index, _total, _addr) {
-        progress.value = { index, current: 0 };
+        progress.current = { index, progress: 0 };
         status.value = FlashStatus.FLASHING;
       },
       onProgress(index, current) {
-        progress.value = { index, current };
+        progress.current = { index, progress: current };
       },
       onError(_error) {
         mayHaveError = true;
@@ -360,7 +317,7 @@ watch([progress, status], async () => {
     case FlashStatus.FLASHING:
       await getCurrent().setProgressBar({
         status: ProgressBarStatus.Normal,
-        progress: Math.round(progressPct.value ?? 0),
+        progress: Math.round(progress.progress * 100),
       });
       break;
     case FlashStatus.STOPPED:
