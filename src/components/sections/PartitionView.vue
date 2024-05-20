@@ -112,6 +112,7 @@ import {
   NPopover,
   NSpin,
   NText,
+  useMessage,
 } from 'naive-ui';
 import {
   Add12Regular,
@@ -121,6 +122,7 @@ import {
 import { isEmpty } from 'radash';
 import { open } from '@tauri-apps/plugin-dialog';
 
+import { UserError } from '@/userError';
 import { cleanUpImage, readImage, type IFlashImage } from '@/utils/images';
 import { fromHex, toHex } from '@/utils/hex';
 import { busyOn } from '@/composables/busyOn';
@@ -152,16 +154,27 @@ const props = defineProps<{
   errors: (string | undefined)[];
 }>();
 
+const message = useMessage();
+
 const parsing = ref(false);
 async function handleFiles(files: string[]) {
-  const parsed = await busyOn(readImage(files), parsing);
-  if (parsed.format == 'hex' || parsed.format != image.value?.format) {
-    if (image.value) {
-      cleanUpImage(image.value);
+  try {
+    const parsed = await busyOn(readImage(files), parsing);
+    if (parsed.format == 'hex' || parsed.format != image.value?.format) {
+      if (image.value) {
+        cleanUpImage(image.value);
+      }
+      image.value = parsed;
+    } else {
+      image.value = { ...image.value, partitions: image.value.partitions.concat(parsed.partitions) };
     }
-    image.value = parsed;
-  } else {
-    image.value = { ...image.value, partitions: image.value.partitions.concat(parsed.partitions) };
+  } catch (e) {
+    if (e instanceof UserError) {
+      message.error(e.summary);
+    } else {
+      console.error(e);
+      message.error('解析固件失败');
+    }
   }
 }
 
