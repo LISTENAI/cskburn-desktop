@@ -3,6 +3,11 @@
 
 use serialport::available_ports;
 
+#[cfg(target_os = "windows")]
+use codepage::to_encoding;
+#[cfg(target_os = "windows")]
+use windows::Win32::Globalization::GetACP;
+
 #[tauri::command]
 fn list_ports() -> Vec<String> {
     match available_ports() {
@@ -23,6 +28,22 @@ fn list_ports() -> Vec<String> {
     }
 }
 
+#[tauri::command]
+fn decode(data: Vec<u8>) -> String {
+    #[cfg(target_os = "windows")]
+    {
+        let code_page = unsafe { GetACP() as u32 };
+        if let Some(encoding) = to_encoding(code_page.try_into().unwrap()) {
+            let (decoded, _, had_errors) = encoding.decode(&data);
+            if !had_errors {
+                return decoded.into_owned();
+            }
+        }
+    }
+
+    String::from_utf8_lossy(&data).to_string()
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -35,7 +56,7 @@ fn main() {
                 .plugin(tauri_plugin_updater::Builder::new().build())?;
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![list_ports])
+        .invoke_handler(tauri::generate_handler![list_ports, decode])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

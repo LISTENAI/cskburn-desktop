@@ -563,6 +563,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "codepage"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b0e9222c0cdf2c6ac27d73f664f9520266fa911c3106329d359f8861cb8bde9"
+dependencies = [
+ "encoding_rs",
+]
+
+[[package]]
 name = "combine"
 version = "4.6.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -680,6 +689,8 @@ dependencies = [
 name = "cskburn-desktop"
 version = "0.1.0"
 dependencies = [
+ "codepage",
+ "encoding_rs",
  "serde",
  "serde_json",
  "serialport",
@@ -690,6 +701,7 @@ dependencies = [
  "tauri-plugin-process",
  "tauri-plugin-shell",
  "tauri-plugin-updater",
+ "windows 0.56.0",
 ]
 
 [[package]]
