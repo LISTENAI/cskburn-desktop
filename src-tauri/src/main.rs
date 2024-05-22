@@ -2,9 +2,11 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod cmds_hex;
+mod cmds_lpk;
 mod cmds_serialport;
 mod cmds_string;
 mod error;
+mod file;
 
 pub use error::Error;
 type Result<T> = std::result::Result<T, Error>;
@@ -23,6 +25,7 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             cmds_hex::read_hex,
+            cmds_lpk::read_lpk,
             cmds_serialport::list_ports,
             cmds_string::decode,
         ])

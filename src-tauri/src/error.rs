@@ -4,6 +4,8 @@ use serde::{Serialize, Serializer};
 pub enum Error {
     #[error(transparent)]
     Io(#[from] std::io::Error),
+    #[error("Invalid LPK: {0}")]
+    InvalidLpk(String),
 }
 
 impl Serialize for Error {

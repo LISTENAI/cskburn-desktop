@@ -89,6 +89,10 @@ export class TmpFile extends BaseFile {
     return new TmpFile(path, name, content.length);
   }
 
+  static clone(base: TmpFile): TmpFile {
+    return new TmpFile(base.path, base.name, base.size);
+  }
+
   private constructor(path: string, name: string, size: number) {
     super(path, name, size);
   }
