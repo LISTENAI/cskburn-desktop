@@ -238,10 +238,6 @@ async function startFlash(): Promise<void> {
   output.value.splice(0);
   status.value = FlashStatus.CONNECTING;
 
-  // Workaround for cskburn bug that invalid addresses won't cause non-zero exit,
-  // while probing retries prints `ERROR:`.
-  let mayHaveError = false;
-
   let result: ICSKBurnResult | undefined;
   let error: unknown;
 
@@ -265,12 +261,6 @@ async function startFlash(): Promise<void> {
       onProgress(index, current) {
         progress.current = { index, progress: current };
       },
-      onError(_error) {
-        mayHaveError = true;
-      },
-      onFinished() {
-        mayHaveError = false;
-      },
     });
   } catch (e) {
     console.error(e);
@@ -292,9 +282,6 @@ async function startFlash(): Promise<void> {
   } else if (result?.code != null && result.code != 0) {
     status.value = FlashStatus.ERROR;
     output.value.push(`[烧录失败: 退出码 ${result.code}]`);
-  } else if (mayHaveError) {
-    status.value = FlashStatus.ERROR;
-    output.value.push('[烧录失败: 发生错误]');
   } else {
     status.value = FlashStatus.SUCCESS;
     output.value.push('[烧录成功]');
