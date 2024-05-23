@@ -8,3 +8,6 @@ indent_size = 2
 
 [*.ts]
 quote_type = single
+
+[*.rs]
+indent_size = 4
