@@ -7,6 +7,7 @@ mod cmds_serialport;
 mod cmds_string;
 mod error;
 mod file;
+mod serialport_watcher;
 
 pub use error::Error;
 type Result<T> = std::result::Result<T, Error>;
@@ -27,6 +28,8 @@ fn main() {
             cmds_hex::read_hex,
             cmds_lpk::read_lpk,
             cmds_serialport::list_ports,
+            cmds_serialport::watch_ports,
+            cmds_serialport::unwatch_ports,
             cmds_string::decode,
         ])
         .run(tauri::generate_context!())

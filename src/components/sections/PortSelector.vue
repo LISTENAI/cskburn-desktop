@@ -8,11 +8,11 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, watch } from 'vue';
+import { computed, ref } from 'vue';
 import { NEmpty, NSelect, useThemeVars, type SelectOption } from 'naive-ui';
-import { invoke } from '@tauri-apps/api/core';
 
-import { useIntervally } from '@/composables/window/useIntervally';
+import { watchPorts } from '@/utils/serialport';
+import { useListen } from '@/composables/tauri/useListen';
 
 const themeVars = useThemeVars();
 
@@ -22,17 +22,19 @@ const props = defineProps<{
 
 const selectedPort = defineModel<string | null>('port');
 
-const availablePorts = useIntervally(1000, async () => await invoke('list_ports'));
+const availablePorts = ref<string[]>();
+
+useListen(() => watchPorts((ports) => {
+  availablePorts.value = ports;
+
+  if (selectedPort.value && !ports?.includes(selectedPort.value)) {
+    selectedPort.value = null;
+  }
+}));
 
 const availableSelections = computed(() => (availablePorts.value ?? []).map((port) => ({
   label: port,
   value: port,
   style: { fontFamily: themeVars.value.fontFamilyMono },
 }) as SelectOption));
-
-watch(availablePorts, (ports) => {
-  if (selectedPort.value && !ports?.includes(selectedPort.value)) {
-    selectedPort.value = null;
-  }
-});
 </script>
