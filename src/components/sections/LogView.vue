@@ -22,5 +22,5 @@ watch(props, () => {
       top: el.value.textareaElRef?.scrollHeight ?? 0,
     });
   });
-});
+}, { immediate: true });
 </script>
