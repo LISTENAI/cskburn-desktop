@@ -45,6 +45,7 @@ export async function cskburn(
 
     function handleOutput(output: string) {
       opts?.onOutput?.(output);
+      output = output.trim();
       let match: RegExpMatchArray | null = null;
       if (output == 'Waiting for device...') {
         opts?.onWaitingForDevice?.();
@@ -76,14 +77,14 @@ export async function cskburn(
 
     command.stdout.on('data', async (data: Uint8Array) => {
       const line = await invoke('decode', { data });
-      outputs.push(line);
-      handleOutput(line.trim());
+      outputs.push(line.trim());
+      handleOutput(line);
     });
 
     command.stderr.on('data', async (data: Uint8Array) => {
       const line = await invoke('decode', { data });
-      outputs.push(line);
-      handleOutput(line.trim());
+      outputs.push(line.trim());
+      handleOutput(line);
     });
 
     command.once('close', (data) => {

@@ -143,7 +143,10 @@ async function fetchInfo(): Promise<void> {
   try {
     result = await busyOn(cskburn(selectedPort.value!, 1500000, [], {
       onOutput(line) {
-        output.value.push(line);
+        if (line.includes('\r')) {
+          output.value.pop();
+        }
+        output.value.push(line.trim());
       },
       onChipId(id) {
         chipId.value = id;
@@ -245,7 +248,10 @@ async function startFlash(): Promise<void> {
     result = await cskburn(selectedPort.value!, 1500000, args, {
       signal: aborter.signal,
       onOutput(line) {
-        output.value.push(line);
+        if (line.includes('\r')) {
+          output.value.pop();
+        }
+        output.value.push(line.trim());
       },
       onChipId(id) {
         chipId.value = id;
