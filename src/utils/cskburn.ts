@@ -1,5 +1,6 @@
 import { Command } from '@tauri-apps/plugin-shell';
-import { invoke } from '@tauri-apps/api/core';
+
+import { decode } from './strings';
 
 type ICSKBurnEventHandlers = Partial<{
   onOutput: (output: string) => void;
@@ -76,13 +77,13 @@ export async function cskburn(
     }
 
     command.stdout.on('data', async (data: Uint8Array) => {
-      const line = await invoke('decode', { data });
+      const line = await decode(data);
       outputs.push(line.trim());
       handleOutput(line);
     });
 
     command.stderr.on('data', async (data: Uint8Array) => {
-      const line = await invoke('decode', { data });
+      const line = await decode(data);
       outputs.push(line.trim());
       handleOutput(line);
     });
