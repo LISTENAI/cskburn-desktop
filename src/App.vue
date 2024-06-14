@@ -39,8 +39,9 @@
         <template v-if="status == FlashStatus.CONNECTING">
           <n-spin size="small" />
         </template>
-        <template v-else-if="status == FlashStatus.FLASHING">
-          <n-progress type="line" :percentage="progress.progress * 100" :show-indicator="false" />
+        <template v-else-if="status == FlashStatus.FLASHING || status == FlashStatus.VERIFYING">
+          <n-progress type="line" :percentage="progress.progress * 100" :show-indicator="false"
+            :processing="status == FlashStatus.VERIFYING" />
         </template>
         <template v-else-if="status == FlashStatus.SUCCESS">
           <n-text :class="$style.result" type="success">
@@ -126,7 +127,10 @@ const status = ref<FlashStatus | null>(null);
 const progress = useFlashProgress(image, status);
 
 const busyForInfo = ref(false);
-const busyForFlash = computed(() => status.value == FlashStatus.CONNECTING || status.value == FlashStatus.FLASHING);
+const busyForFlash = computed(() =>
+  status.value == FlashStatus.CONNECTING ||
+  status.value == FlashStatus.FLASHING ||
+  status.value == FlashStatus.VERIFYING);
 
 const readyToFlash = computed(() => selectedPort.value != null && image.value != null && !hasError.value);
 
@@ -259,6 +263,10 @@ async function startFlash(): Promise<void> {
         progress.current = { index, progress: 0 };
         status.value = FlashStatus.FLASHING;
       },
+      onWrote(index) {
+        progress.current = { index, progress: 1 };
+        status.value = FlashStatus.VERIFYING;
+      },
       onProgress(index, current) {
         progress.current = { index, progress: current };
       },
@@ -309,6 +317,7 @@ watch([progress, status], async () => {
       });
       break;
     case FlashStatus.FLASHING:
+    case FlashStatus.VERIFYING:
       setProgressThrottled(Math.round(progress.progress * 100));
       break;
     case FlashStatus.STOPPED:

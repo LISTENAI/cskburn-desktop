@@ -4,6 +4,7 @@ import { imageSize, type IFlashImage } from '@/utils/images';
 export enum FlashStatus {
   CONNECTING,
   FLASHING,
+  VERIFYING,
   STOPPED,
   SUCCESS,
   ERROR,

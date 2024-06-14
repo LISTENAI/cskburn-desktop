@@ -38,6 +38,10 @@
               <span>-</span>
               <n-text>{{ (props.progress.progress * 100).toFixed(1) }}%</n-text>
             </template>
+            <template v-else-if="props.progress.status == FlashStatus.VERIFYING">
+              <span>-</span>
+              <n-text>校验中…</n-text>
+            </template>
             <template v-else-if="props.progress.status == FlashStatus.SUCCESS">
               <span>-</span>
               <n-text type="success">已完成</n-text>
@@ -98,8 +102,11 @@
           <template v-else-if="props.progress.perPartition?.[index]?.status == FlashStatus.FLASHING">
             <field-progress :progress="props.progress.perPartition[index]?.progress ?? 0" />
           </template>
+          <template v-else-if="props.progress.perPartition?.[index]?.status == FlashStatus.VERIFYING">
+            <n-text>校验中…</n-text>
+          </template>
           <template v-else-if="props.progress.perPartition?.[index]?.status == FlashStatus.SUCCESS">
-            <field-progress :progress="1" />
+            <n-text type="success">已完成</n-text>
           </template>
           <template v-else>
             <n-text>未开始</n-text>
