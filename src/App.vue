@@ -34,6 +34,8 @@
 
     <partition-view v-model:image="image" :busy="busyForFlash" :progress :errors :style="{ flex: '1 1 auto' }" />
 
+    <log-view v-if="outputShown" :logs="output.join('\n')" :style="{ height: '200px' }" />
+
     <n-flex align="center">
       <n-flex align="center" :style="{ width: 'auto', flex: '1 1 auto' }">
         <template v-if="status == FlashStatus.CONNECTING">
@@ -72,8 +74,6 @@
         开始烧录
       </n-button>
     </n-flex>
-
-    <log-view v-if="outputShown" :logs="output.join('\n')" :style="{ height: '200px' }" />
   </n-flex>
 </template>
 
