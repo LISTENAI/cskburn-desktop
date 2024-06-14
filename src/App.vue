@@ -55,7 +55,8 @@
         </template>
       </n-flex>
 
-      <n-button quaternary :type="outputShown ? 'primary' : 'default'" @click="() => outputShown = !outputShown">
+      <n-button quaternary :type="outputShown ? 'primary' : 'default'" :focusable="false"
+        @click="() => outputShown = !outputShown">
         <template #icon>
           <n-icon>
             <list-16-regular />
