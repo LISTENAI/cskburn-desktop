@@ -52,7 +52,12 @@
         </template>
         <template v-else-if="status == FlashStatus.ERROR">
           <n-text :class="$style.result" type="error">
-            烧录异常
+            <template v-if="failure">
+              烧录异常：<selectable-text selectable>{{ failure }}</selectable-text>
+            </template>
+            <template v-else>
+              烧录异常
+            </template>
           </n-text>
         </template>
       </n-flex>
@@ -125,6 +130,7 @@ const flashInfo = computed(() => {
 });
 
 const status = ref<FlashStatus | null>(null);
+const failure = ref<string | null>(null);
 const progress = useFlashProgress(image, status);
 
 const busyForInfo = ref(false);
@@ -222,6 +228,7 @@ const outputShown = ref(false);
 watch(image, () => {
   progress.current = null;
   status.value = null;
+  failure.value = null;
 });
 
 let aborter: AbortController | undefined;
@@ -270,6 +277,9 @@ async function startFlash(): Promise<void> {
       },
       onProgress(index, current) {
         progress.current = { index, progress: current };
+      },
+      onError(error) {
+        failure.value = error;
       },
     });
   } catch (e) {
