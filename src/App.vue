@@ -93,6 +93,7 @@ import {
 import { getCurrent, ProgressBarStatus, UserAttentionType } from '@tauri-apps/api/window';
 import { confirm } from '@tauri-apps/plugin-dialog';
 import { List16Regular } from '@vicons/fluent';
+import { throttle } from 'radash';
 import { imageSize, type IFlashImage } from '@/utils/images';
 import { cskburn, type ICSKBurnResult } from '@/utils/cskburn';
 import { cleanUpTmpFiles } from '@/utils/file';
@@ -299,6 +300,12 @@ function stopFlash(): void {
   aborter?.abort();
 }
 
+const setProgressThrottled = throttle({ interval: 500 }, async (progress: number) =>
+  await getCurrent().setProgressBar({
+    status: ProgressBarStatus.Normal,
+    progress,
+  }));
+
 watch([progress, status], async () => {
   switch (status.value) {
     case FlashStatus.CONNECTING:
@@ -308,10 +315,7 @@ watch([progress, status], async () => {
       });
       break;
     case FlashStatus.FLASHING:
-      await getCurrent().setProgressBar({
-        status: ProgressBarStatus.Normal,
-        progress: Math.round(progress.progress * 100),
-      });
+      setProgressThrottled(Math.round(progress.progress * 100));
       break;
     case FlashStatus.STOPPED:
     case FlashStatus.SUCCESS:
