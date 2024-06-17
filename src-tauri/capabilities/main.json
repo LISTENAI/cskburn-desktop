@@ -26,10 +26,29 @@
           "cmd": "",
           "args": true,
           "sidecar": true
+        },
+        {
+          "name": "reveal-file-windows",
+          "cmd": "Explorer",
+          "args": true,
+          "sidecar": false
+        },
+        {
+          "name": "reveal-file-macos",
+          "cmd": "open",
+          "args": true,
+          "sidecar": false
+        },
+        {
+          "name": "reveal-file-linux",
+          "cmd": "dbus-send",
+          "args": true,
+          "sidecar": false
         }
       ]
     },
     "shell:allow-kill",
+    "os:allow-os-type",
     "process:allow-restart",
     "updater:default",
     "window:allow-destroy",

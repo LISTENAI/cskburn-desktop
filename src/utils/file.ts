@@ -10,6 +10,12 @@ export interface IFileRef {
   path: string;
 
   /**
+   * Path of the container file (for example, a .lpk file) that this file is
+   * extracted from (if any).
+   */
+  containerPath?: string;
+
+  /**
    * Display name of the file.
    */
   name: string;
@@ -78,7 +84,7 @@ export class LocalFile extends BaseFile {
 }
 
 export class TmpFile extends BaseFile {
-  static async from(pseudoPath: string, content: Uint8Array): Promise<TmpFile> {
+  static async from(pseudoPath: string, content: Uint8Array, containerPath?: string): Promise<TmpFile> {
     const tmpDir = await ensureTmpDir();
 
     const path = await join(tmpDir, generateTmpFileName());
@@ -86,14 +92,15 @@ export class TmpFile extends BaseFile {
 
     await writeFile(path, content);
 
-    return new TmpFile(path, name, content.length);
+    return new TmpFile(path, name, content.length, containerPath);
   }
 
   static clone(base: TmpFile): TmpFile {
-    return new TmpFile(base.path, base.name, base.size);
+    return new TmpFile(base.path, base.name, base.size, base.containerPath);
   }
 
-  private constructor(path: string, name: string, size: number) {
+  private constructor(path: string, name: string, size: number,
+    readonly containerPath?: string) {
     super(path, name, size);
   }
 

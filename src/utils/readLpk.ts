@@ -7,6 +7,6 @@ export async function readLpk(path: string): Promise<IPartition[]> {
   const partitions = await invoke('read_lpk', { path });
   return partitions.map((part) => ({
     addr: part.addr,
-    file: TmpFile.clone(part.file),
+    file: TmpFile.clone({ ...part.file, containerPath: path }),
   }));
 }

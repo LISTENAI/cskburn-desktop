@@ -6,13 +6,18 @@
       </selectable-text>
     </n-element>
     <template v-for="button in (props.buttons || [])">
-      <n-button :class="$style.button" size="small" quaternary circle @click="button.onClick">
-        <template #icon>
-          <n-icon>
-            <component :is="button.icon" />
-          </n-icon>
+      <n-tooltip>
+        <template #trigger>
+          <n-button :class="$style.button" size="small" quaternary circle @click="button.onClick">
+            <template #icon>
+              <n-icon>
+                <component :is="button.icon" />
+              </n-icon>
+            </template>
+          </n-button>
         </template>
-      </n-button>
+        {{ button.title }}
+      </n-tooltip>
     </template>
   </n-flex>
 </template>
@@ -24,6 +29,7 @@ import {
   NElement,
   NFlex,
   NIcon,
+  NTooltip,
 } from 'naive-ui';
 
 import SelectableText from '@/components/common/SelectableText.vue';

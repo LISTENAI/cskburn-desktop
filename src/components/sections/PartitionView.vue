@@ -22,34 +22,56 @@
           <selectable-text :class="$style.name" selectable>{{ image.file.name }}</selectable-text>
           <n-space>
             <file-size :class="$style.size" :size="image.file.size" />
+            <span>-</span>
             <template v-if="props.errors[0]">
-              <span>-</span>
               <n-text type="error">{{ props.errors[0] }}</n-text>
             </template>
             <template v-if="props.progress.status == FlashStatus.STOPPED">
-              <span>-</span>
               <n-text type="error">已停止</n-text>
             </template>
             <template v-else-if="props.progress.status == FlashStatus.ERROR">
-              <span>-</span>
               <n-text type="error">异常</n-text>
             </template>
             <template v-else-if="props.progress.status == FlashStatus.FLASHING">
-              <span>-</span>
               <n-text>{{ (props.progress.progress * 100).toFixed(1) }}%</n-text>
             </template>
             <template v-else-if="props.progress.status == FlashStatus.VERIFYING">
-              <span>-</span>
               <n-text>校验中…</n-text>
             </template>
             <template v-else-if="props.progress.status == FlashStatus.SUCCESS">
-              <span>-</span>
               <n-text type="success">已完成</n-text>
             </template>
+            <template v-else>
+              <n-text>未开始</n-text>
+            </template>
           </n-space>
-          <n-button secondary :disabled="props.busy" :style="{ marginTop: '16px' }" @click="() => image = null">
-            重新选择
-          </n-button>
+          <n-space>
+            <n-tooltip>
+              <template #trigger>
+                <n-button size="small" quaternary circle
+                  @click="() => image?.format == 'hex' && revealFile(image.file.path)">
+                  <template #icon>
+                    <n-icon>
+                      <search-16-regular />
+                    </n-icon>
+                  </template>
+                </n-button>
+              </template>
+              定位文件
+            </n-tooltip>
+            <n-tooltip>
+              <template #trigger>
+                <n-button size="small" quaternary circle :disabled="props.busy" @click="() => image = null">
+                  <template #icon>
+                    <n-icon>
+                      <delete-16-regular />
+                    </n-icon>
+                  </template>
+                </n-button>
+              </template>
+              重新选择
+            </n-tooltip>
+          </n-space>
         </n-flex>
       </n-element>
       <partition-table v-else-if="image.format == 'bin'" :partitions="image.partitions" :style="{ height: '100%' }">
@@ -67,7 +89,13 @@
           <field-base>{{ index + 1 }}</field-base>
         </template>
         <template #column-name="{ data }">
-          <field-base selectable>{{ data.file.name }}</field-base>
+          <field-base selectable :buttons="[
+            {
+              icon: Search16Regular,
+              title: '定位文件',
+              onClick: () => revealFile(data.file.containerPath ?? data.file.path),
+            },
+          ]">{{ data.file.name }}</field-base>
         </template>
         <template #column-addr="{ index }">
           <field-addr v-model:value="state![index].addr" :placeholder="toHex(image.partitions[index].addr)"
@@ -149,6 +177,7 @@ import {
   Add12Regular,
   Delete16Regular,
   ErrorCircle16Regular,
+  Search16Regular,
 } from '@vicons/fluent';
 import { isEmpty } from 'radash';
 import { open } from '@tauri-apps/plugin-dialog';
@@ -156,6 +185,7 @@ import { open } from '@tauri-apps/plugin-dialog';
 import { UserError } from '@/userError';
 import { cleanUpImage, readImage, type IFlashImage } from '@/utils/images';
 import { fromHex, toHex } from '@/utils/hex';
+import { revealFile } from '@/utils/revealFile';
 import { busyOn } from '@/composables/busyOn';
 import { FlashStatus, type IFlashProgress } from '@/composables/progress';
 
