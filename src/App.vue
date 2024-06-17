@@ -62,14 +62,24 @@
         </template>
       </n-flex>
 
-      <n-button quaternary :type="outputShown ? 'primary' : 'default'" :focusable="false"
-        @click="() => outputShown = !outputShown">
-        <template #icon>
-          <n-icon>
-            <list-16-regular />
-          </n-icon>
+      <n-tooltip>
+        <template #trigger>
+          <n-button quaternary :type="outputShown ? 'primary' : 'default'" :focusable="false"
+            @click="() => outputShown = !outputShown">
+            <template #icon>
+              <n-icon>
+                <list-16-regular />
+              </n-icon>
+            </template>
+          </n-button>
         </template>
-      </n-button>
+        <template v-if="outputShown">
+          隐藏日志
+        </template>
+        <template v-else>
+          显示日志
+        </template>
+      </n-tooltip>
 
       <n-button v-if="busyForFlash" size="large" :style="{ flex: '0 0 140px' }" @click="stopFlash">
         停止
@@ -95,6 +105,7 @@ import {
   NProgress,
   NSpin,
   NText,
+  NTooltip,
   useMessage,
 } from 'naive-ui';
 import { getCurrent, ProgressBarStatus, UserAttentionType } from '@tauri-apps/api/window';

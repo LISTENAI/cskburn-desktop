@@ -113,13 +113,18 @@
           </template>
         </template>
         <template #column-actions="{ index }">
-          <n-button quaternary circle size="small" :disabled="props.busy" @click="() => handlePartRemove(index)">
-            <template #icon>
-              <n-icon>
-                <delete-16-regular />
-              </n-icon>
+          <n-tooltip>
+            <template #trigger>
+              <n-button quaternary circle size="small" :disabled="props.busy" @click="() => handlePartRemove(index)">
+                <template #icon>
+                  <n-icon>
+                    <delete-16-regular />
+                  </n-icon>
+                </template>
+              </n-button>
             </template>
-          </n-button>
+            从列表移除
+          </n-tooltip>
         </template>
       </partition-table>
     </file-dropper>
@@ -137,6 +142,7 @@ import {
   NSpace,
   NSpin,
   NText,
+  NTooltip,
   useMessage,
 } from 'naive-ui';
 import {
