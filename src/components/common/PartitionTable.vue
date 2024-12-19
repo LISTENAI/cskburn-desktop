@@ -55,7 +55,7 @@ const columns: DataTableColumns<IPartition> = [
     title: '',
     key: 'actions',
     align: 'right',
-    width: '4em',
+    width: '6em',
   },
 ];
 </script>

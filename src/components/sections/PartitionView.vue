@@ -52,7 +52,7 @@
                   @click="() => image?.format == 'hex' && revealFile(image.file.path)">
                   <template #icon>
                     <n-icon>
-                      <search-16-regular />
+                      <folder-open16-regular />
                     </n-icon>
                   </template>
                 </n-button>
@@ -89,13 +89,7 @@
           <field-base>{{ index + 1 }}</field-base>
         </template>
         <template #column-name="{ data }">
-          <field-base selectable :buttons="[
-            {
-              icon: Search16Regular,
-              title: '定位文件',
-              onClick: () => revealFile(data.file.containerPath ?? data.file.path),
-            },
-          ]">{{ data.file.name }}</field-base>
+          <field-base selectable>{{ data.file.name }}</field-base>
         </template>
         <template #column-addr="{ index }">
           <field-addr v-model:value="state![index].addr" :placeholder="toHex(image.partitions[index].addr)"
@@ -140,19 +134,34 @@
             <n-text>未开始</n-text>
           </template>
         </template>
-        <template #column-actions="{ index }">
-          <n-tooltip>
-            <template #trigger>
-              <n-button quaternary circle size="small" :disabled="props.busy" @click="() => handlePartRemove(index)">
-                <template #icon>
-                  <n-icon>
-                    <delete-16-regular />
-                  </n-icon>
-                </template>
-              </n-button>
-            </template>
-            从列表移除
-          </n-tooltip>
+        <template #column-actions="{ data, index }">
+          <n-space>
+            <n-tooltip>
+              <template #trigger>
+                <n-button quaternary circle size="small"
+                  @click="() => revealFile(data.file.containerPath ?? data.file.path)">
+                  <template #icon>
+                    <n-icon>
+                      <folder-open-16-regular />
+                    </n-icon>
+                  </template>
+                </n-button>
+              </template>
+              定位文件
+            </n-tooltip>
+            <n-tooltip>
+              <template #trigger>
+                <n-button quaternary circle size="small" :disabled="props.busy" @click="() => handlePartRemove(index)">
+                  <template #icon>
+                    <n-icon>
+                      <delete-16-regular />
+                    </n-icon>
+                  </template>
+                </n-button>
+              </template>
+              从列表移除
+            </n-tooltip>
+          </n-space>
         </template>
       </partition-table>
     </file-dropper>
@@ -177,7 +186,7 @@ import {
   Add12Regular,
   Delete16Regular,
   ErrorCircle16Regular,
-  Search16Regular,
+  FolderOpen16Regular,
 } from '@vicons/fluent';
 import { isEmpty } from 'radash';
 import { open } from '@tauri-apps/plugin-dialog';
