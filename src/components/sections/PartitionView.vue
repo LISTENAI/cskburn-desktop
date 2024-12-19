@@ -95,6 +95,11 @@
           <field-addr v-model:value="state![index].addr" :placeholder="toHex(image.partitions[index].addr)"
             :disabled="props.busy" @blur="() => handleAddrInputBlur(index)" />
         </template>
+        <template #column-modified-at="{ data }">
+          <field-base>
+            <n-time :time="data.file.mtime" />
+          </field-base>
+        </template>
         <template #column-size="{ data }">
           <field-base>
             <file-size :size="data.file.size" />
@@ -179,6 +184,7 @@ import {
   NSpace,
   NSpin,
   NText,
+  NTime,
   NTooltip,
   useMessage,
 } from 'naive-ui';

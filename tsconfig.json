@@ -11,6 +11,8 @@
       "vite/client",
       "naive-ui/volar",
     ],
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
   },
   "include": [
     "src/**/*.ts",

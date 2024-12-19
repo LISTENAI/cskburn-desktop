@@ -9,6 +9,7 @@ pub struct TmpFile {
     path: String,
     name: String,
     size: u32,
+    mtime: u64,
 }
 
 fn ensure_tmp_dir<R: tauri::Runtime>(resolver: &PathResolver<R>) -> Result<PathBuf, Error> {
@@ -36,6 +37,7 @@ impl TmpFile {
         resolver: &PathResolver<R>,
         pseudo_path: String,
         content: Vec<u8>,
+        mtime: u64,
     ) -> Result<Self, Error> {
         let tmp_dir = ensure_tmp_dir(resolver)?;
 
@@ -56,7 +58,12 @@ impl TmpFile {
 
         std::fs::write(path.clone(), content)?;
 
-        Ok(Self { path, name, size })
+        Ok(Self {
+            path,
+            name,
+            size,
+            mtime,
+        })
     }
 
     pub fn free(&self) -> Result<(), Error> {

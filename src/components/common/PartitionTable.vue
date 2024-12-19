@@ -17,7 +17,7 @@ const props = defineProps<{
   partitions: IPartition[];
 }>();
 
-type Keys = 'index' | 'name' | 'addr' | 'size' | 'progress' | 'actions';
+type Keys = 'index' | 'name' | 'addr' | 'modified-at' | 'size' | 'progress' | 'actions';
 
 const slots = defineSlots<{
   footer?: Component;
@@ -38,6 +38,11 @@ const columns: DataTableColumns<IPartition> = [
     title: '地址',
     key: 'addr',
     width: '10em',
+  },
+  {
+    title: '文件修改时间',
+    key: 'modified-at',
+    width: '13em',
   },
   {
     title: '大小',
