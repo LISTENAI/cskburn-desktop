@@ -21,7 +21,12 @@
     "publisher": "LISTENAI",
     "externalBin": [
       "cskburn-cli/cskburn"
-    ]
+    ],
+    "windows": {
+      "webviewInstallMode": {
+        "type": "offlineInstaller"
+      }
+    }
   },
   "plugins": {
     "updater": {
