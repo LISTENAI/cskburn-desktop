@@ -1,5 +1,5 @@
 import { appCacheDir, basename, join } from '@tauri-apps/api/path';
-import { mkdir, readFile, remove, stat, writeFile } from '@tauri-apps/plugin-fs';
+import { mkdir, readFile, remove, stat, writeFile, watch as watchFile, type UnwatchFn, exists } from '@tauri-apps/plugin-fs';
 import { plainToInstance, Type } from 'class-transformer';
 
 const TEMP_DIR = 'unpacked';
@@ -32,6 +32,16 @@ export interface IFileRef {
   mtime: Date;
 
   /**
+   * Whether the file exists or not.
+   */
+  existed: boolean;
+
+  /**
+   * Watch the file for changes.
+   */
+  startWatch(): Promise<UnwatchFileFn>;
+
+  /**
    * Read the content of the file.
    */
   content(): Promise<Uint8Array>;
@@ -61,18 +71,41 @@ function generateTmpFileName(): string {
   return `${Math.random().toString(36).substring(2)}.bin`;
 }
 
+export type UnwatchFileFn = () => void;
+
 abstract class BaseFile implements IFileRef {
   readonly path!: string;
   readonly name!: string;
-  readonly size!: number;
-  @Type(() => Date) readonly mtime!: Date;
+  size!: number;
+  @Type(() => Date) mtime!: Date;
+
+  private unwatchFn?: UnwatchFn;
+  existed = true;
+
+  async startWatch(): Promise<UnwatchFileFn> {
+    if (!(await exists(this.path))) {
+      throw new Error(`File ${this.path} does not exist`);
+    }
+    this.unwatchFn?.();
+    this.unwatchFn = await watchFile(this.path, async (ev) => {
+      if ('modify' in (ev.type as any) || 'create' in (ev.type as any)) {
+        const newStat = await stat(this.path);
+        this.mtime = newStat.mtime!;
+        this.size = newStat.size;
+        this.existed = true;
+      } else if ('remove' in (ev.type as any)) {
+        this.existed = false;
+      }
+    });
+    return this.unwatchFn;
+  }
 
   async content(): Promise<Uint8Array> {
     return await readFile(this.path);
   }
 
   async free(): Promise<void> {
-    // do nothing
+    this.unwatchFn?.();
   }
 }
 

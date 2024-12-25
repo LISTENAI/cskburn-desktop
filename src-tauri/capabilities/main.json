@@ -15,6 +15,8 @@
     "dialog:allow-open",
     "fs:default",
     "fs:allow-stat",
+    "fs:allow-unwatch",
+    "fs:allow-watch",
     {
       "identifier": "fs:allow-appcache-write",
       "allow": [

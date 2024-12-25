@@ -20,14 +20,19 @@
         <n-flex :class="$style.hexFile" vertical align="center" justify="center" :wrap="false"
           :style="{ height: '100%' }">
           <selectable-text :class="$style.name" selectable>{{ image.file.name }}</selectable-text>
-          <n-space>
-            <file-size :class="$style.size" :size="image.file.size" />
-            <span>-</span>
+          <n-space vertical :style="{ alignItems: 'center' }">
+            <!-- <n-text v-if="image.file.existed">修改时间：</n-text> -->
+            <n-time v-if="image.file.existed" :time="image.file.mtime!.getTime()" />
+            <!-- <n-text v-if="image.file.existed">文件大小：</n-text> -->
+            <file-size v-if="image.file.existed" :class="$style.size" :size="image.file.size" />
             <template v-if="props.errors[0]">
               <n-text type="error">{{ props.errors[0] }}</n-text>
             </template>
             <template v-if="props.progress.status == FlashStatus.STOPPED">
               <n-text type="error">已停止</n-text>
+            </template>
+            <template v-else-if="!image.file.existed">
+              <n-text type="error">已移除</n-text>
             </template>
             <template v-else-if="props.progress.status == FlashStatus.ERROR">
               <n-text type="error">异常</n-text>
@@ -49,7 +54,7 @@
             <n-tooltip>
               <template #trigger>
                 <n-button size="small" quaternary circle
-                  @click="() => image?.format == 'hex' && revealFile(image.file.path)">
+                  @click="() => image?.format == 'hex' && revealFile(image.file.path)" :disabled="!image.file.existed">
                   <template #icon>
                     <n-icon>
                       <folder-open16-regular />
@@ -89,7 +94,14 @@
           <field-base>{{ index + 1 }}</field-base>
         </template>
         <template #column-name="{ data }">
-          <field-base selectable>{{ data.file.name }}</field-base>
+          <field-base selectable>
+            <n-popover>
+              <template #trigger>
+                {{ data.file.name }}
+              </template>
+              <span>{{ data.file.path }}</span>
+            </n-popover>
+          </field-base>
         </template>
         <template #column-addr="{ index }">
           <field-addr v-model:value="state![index].addr" :placeholder="toHex(image.partitions[index].addr)"
@@ -97,12 +109,12 @@
         </template>
         <template #column-modified-at="{ data }">
           <field-base>
-            <n-time :time="data.file.mtime" />
+            <n-time v-if="data.file.existed" :time="data.file.mtime" />
           </field-base>
         </template>
         <template #column-size="{ data }">
           <field-base>
-            <file-size :size="data.file.size" />
+            <file-size v-if="data.file.existed" :size="data.file.size" />
           </field-base>
         </template>
         <template #column-progress="{ index }">
@@ -119,6 +131,9 @@
               </template>
               <span>{{ props.errors[index] }}</span>
             </n-popover>
+          </template>
+          <template v-else-if="!image.partitions[index].file.existed">
+            <n-text type="error">已移除</n-text>
           </template>
           <template v-else-if="props.progress.perPartition?.[index]?.status == FlashStatus.STOPPED">
             <n-text type="error">已停止</n-text>
@@ -143,7 +158,7 @@
           <n-space>
             <n-tooltip>
               <template #trigger>
-                <n-button quaternary circle size="small"
+                <n-button quaternary circle size="small" :disabled="!data.file.existed"
                   @click="() => revealFile(data.file.containerPath ?? data.file.path)">
                   <template #icon>
                     <n-icon>
@@ -251,6 +266,13 @@ async function handleFiles(files: string[]) {
 
 const state = ref<IPartitionState[] | null>(null);
 watch(image, (image) => {
+  if (image?.format == 'bin') {
+    image.partitions.forEach((part) => {
+      part.file.startWatch();
+    });
+  } else if (image?.format == 'hex') {
+    image.file.startWatch();
+  }
   state.value = image?.format == 'bin' ? image.partitions.map((part) => ({
     addr: toHex(part.addr),
   })) : null;

@@ -15,7 +15,7 @@ tauri-build = { version = "2.2.0", features = [] }
 [dependencies]
 tauri = { version = "2.5.1", features = [] }
 tauri-plugin-dialog = "2.2.1"
-tauri-plugin-fs = "2.2.1"
+tauri-plugin-fs = { version = "2.2.1", features = ["watch"] }
 tauri-plugin-os = "2.2.1"
 tauri-plugin-process = "2.2.1"
 tauri-plugin-shell = "2.2.1"
