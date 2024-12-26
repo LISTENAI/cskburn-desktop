@@ -11,12 +11,16 @@ export async function revealFile(path: string): Promise<void> {
       break;
     case 'linux':
       await Command.create('reveal-file-linux', [
-        '--print-reply',
-        '--dest=org.freedesktop.FileManager1',
-        '/org/freedesktop/FileManager1',
-        'org.freedesktop.FileManager1.ShowItems',
-        `array:string:"file://${path}"`,
-        'string:""',
+        '-c',
+        [
+          'dbus-send',
+          '--print-reply',
+          '--dest=org.freedesktop.FileManager1',
+          '/org/freedesktop/FileManager1',
+          'org.freedesktop.FileManager1.ShowItems',
+          `array:string:"file://${path}"`,
+          'string:""',
+        ].join(' '),
       ]).execute();
       break;
     default:

@@ -38,7 +38,7 @@
         },
         {
           "name": "reveal-file-linux",
-          "cmd": "dbus-send",
+          "cmd": "/bin/sh",
           "args": true
         }
       ]
