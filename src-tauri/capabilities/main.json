@@ -6,10 +6,15 @@
     "main"
   ],
   "permissions": [
+    "core:event:default",
+    "core:path:default",
+    "core:window:allow-destroy",
+    "core:window:allow-request-user-attention",
+    "core:window:allow-set-progress-bar",
     "dialog:allow-confirm",
     "dialog:allow-open",
-    "event:default",
     "fs:default",
+    "fs:allow-stat",
     {
       "identifier": "fs:allow-appcache-write",
       "allow": [
@@ -17,42 +22,39 @@
         "$APPCACHE/unpacked/*"
       ]
     },
-    "path:default",
+    "shell:allow-kill",
     {
       "identifier": "shell:allow-execute",
       "allow": [
         {
-          "name": "cskburn-cli/cskburn",
-          "cmd": "",
-          "args": true,
-          "sidecar": true
-        },
-        {
           "name": "reveal-file-windows",
           "cmd": "Explorer",
-          "args": true,
-          "sidecar": false
+          "args": true
         },
         {
           "name": "reveal-file-macos",
           "cmd": "open",
-          "args": true,
-          "sidecar": false
+          "args": true
         },
         {
           "name": "reveal-file-linux",
           "cmd": "dbus-send",
-          "args": true,
-          "sidecar": false
+          "args": true
         }
       ]
     },
-    "shell:allow-kill",
+    {
+      "identifier": "shell:allow-spawn",
+      "allow": [
+        {
+          "name": "cskburn-cli/cskburn",
+          "args": true,
+          "sidecar": true
+        }
+      ]
+    },
     "os:allow-os-type",
     "process:allow-restart",
-    "updater:default",
-    "window:allow-destroy",
-    "window:allow-request-user-attention",
-    "window:allow-set-progress-bar"
+    "updater:default"
   ]
 }

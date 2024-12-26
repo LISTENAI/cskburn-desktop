@@ -26,7 +26,7 @@ pub fn list_ports() -> Vec<String> {
 }
 
 struct WatcherHandler {
-    on_event: Channel,
+    on_event: Channel<Vec<String>>,
     last_ports: Vec<String>,
 }
 
@@ -59,7 +59,10 @@ impl WatcherResource {
 impl Resource for WatcherResource {}
 
 #[tauri::command]
-pub async fn watch_ports<R: Runtime>(webview: Webview<R>, on_event: Channel) -> ResourceId {
+pub async fn watch_ports<R: Runtime>(
+    webview: Webview<R>,
+    on_event: Channel<Vec<String>>,
+) -> ResourceId {
     let event_handler = WatcherHandler {
         on_event,
         last_ports: Vec::new(),

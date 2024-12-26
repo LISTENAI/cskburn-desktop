@@ -265,7 +265,7 @@ async function handleFilePick() {
   });
 
   if (selected && selected.length > 0) {
-    await handleFiles(selected.map((file) => file.path));
+    await handleFiles(selected);
   }
 }
 

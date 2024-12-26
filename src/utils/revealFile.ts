@@ -2,8 +2,7 @@ import { Command } from '@tauri-apps/plugin-shell';
 import { type } from '@tauri-apps/plugin-os';
 
 export async function revealFile(path: string): Promise<void> {
-  const os = await type();
-  switch (os) {
+  switch (type()) {
     case 'windows':
       await Command.create('reveal-file-windows', [`/select,"${path}"`]).execute();
       break;

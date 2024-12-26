@@ -108,7 +108,7 @@ import {
   NTooltip,
   useMessage,
 } from 'naive-ui';
-import { getCurrent, ProgressBarStatus, UserAttentionType } from '@tauri-apps/api/window';
+import { getCurrentWindow, ProgressBarStatus, UserAttentionType } from '@tauri-apps/api/window';
 import { confirm } from '@tauri-apps/plugin-dialog';
 import { List16Regular } from '@vicons/fluent';
 import { throttle } from 'radash';
@@ -325,7 +325,7 @@ function stopFlash(): void {
 }
 
 const setProgressThrottled = throttle({ interval: 500 }, async (progress: number) =>
-  await getCurrent().setProgressBar({
+  await getCurrentWindow().setProgressBar({
     status: ProgressBarStatus.Normal,
     progress,
   }));
@@ -333,7 +333,7 @@ const setProgressThrottled = throttle({ interval: 500 }, async (progress: number
 watch([progress, status], async () => {
   switch (status.value) {
     case FlashStatus.CONNECTING:
-      await getCurrent().setProgressBar({
+      await getCurrentWindow().setProgressBar({
         status: ProgressBarStatus.Indeterminate,
         progress: 0,
       });
@@ -344,21 +344,21 @@ watch([progress, status], async () => {
       break;
     case FlashStatus.STOPPED:
     case FlashStatus.SUCCESS:
-      await getCurrent().setProgressBar({
+      await getCurrentWindow().setProgressBar({
         status: ProgressBarStatus.None,
       });
-      await getCurrent().requestUserAttention(UserAttentionType.Informational);
+      await getCurrentWindow().requestUserAttention(UserAttentionType.Informational);
       break;
     case FlashStatus.ERROR:
-      await getCurrent().setProgressBar({
+      await getCurrentWindow().setProgressBar({
         status: ProgressBarStatus.Error,
       });
-      await getCurrent().requestUserAttention(UserAttentionType.Critical);
+      await getCurrentWindow().requestUserAttention(UserAttentionType.Critical);
       break;
   }
 });
 
-useListen(() => getCurrent().onCloseRequested(async (event) => {
+useListen(() => getCurrentWindow().onCloseRequested(async (event) => {
   if (busyForFlash.value) {
     const confirmed = await confirm('正在烧录，退出软件会导致烧录被终止。确定要退出吗？', {
       okLabel: '确定',
