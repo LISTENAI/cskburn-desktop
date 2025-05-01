@@ -1,4 +1,5 @@
 import { Command } from '@tauri-apps/plugin-shell';
+import PQueue from 'p-queue';
 
 import { decode } from './strings';
 
@@ -40,6 +41,7 @@ export async function cskburn(
       ...args,
     ], { encoding: 'raw' });
 
+    const queue = new PQueue({ concurrency: 1 });
     const outputs: string[] = [];
 
     let currentIndex = 0;
@@ -75,23 +77,25 @@ export async function cskburn(
       }
     }
 
-    command.stdout.on('data', async (data: Uint8Array) => {
-      const line = await decode(data);
-      outputs.push(line);
-      handleOutput(line.trim());
-    });
+    function handleData(data: Uint8Array) {
+      queue.add(async () => {
+        for (const line of (await decode(data)).trim().split('\n')) {
+          outputs.push(line);
+          handleOutput(line.trim());
+        }
+      });
+    }
 
-    command.stderr.on('data', async (data: Uint8Array) => {
-      const line = await decode(data);
-      outputs.push(line);
-      handleOutput(line.trim());
-    });
+    command.stdout.on('data', handleData);
+    command.stderr.on('data', handleData);
 
-    command.once('close', (data) => {
-      resolve({ code: data.code, signal: data.signal, output: outputs.join('') })
+    command.once('close', async ({ code, signal }) => {
+      await queue.onIdle();
+      resolve({ code, signal, output: outputs.join('') })
     });
 
     command.once('error', (data) => {
+      queue.clear();
       reject(data);
     });
 
