@@ -1,5 +1,6 @@
 import { appCacheDir, basename, join } from '@tauri-apps/api/path';
 import { mkdir, readFile, remove, stat, writeFile } from '@tauri-apps/plugin-fs';
+import { plainToInstance } from 'class-transformer';
 
 const TEMP_DIR = 'unpacked';
 
@@ -55,12 +56,10 @@ function generateTmpFileName(): string {
   return `${Math.random().toString(36).substring(2)}.bin`;
 }
 
-class BaseFile implements IFileRef {
-  constructor(
-    readonly path: string,
-    readonly name: string,
-    readonly size: number) {
-  }
+abstract class BaseFile implements IFileRef {
+  readonly path!: string;
+  readonly name!: string;
+  readonly size!: number;
 
   async content(): Promise<Uint8Array> {
     return await readFile(this.path);
@@ -75,15 +74,13 @@ export class LocalFile extends BaseFile {
   static async from(path: string): Promise<LocalFile> {
     const name = await basename(path);
     const { size } = await stat(path);
-    return new LocalFile(path, name, size);
-  }
-
-  private constructor(path: string, name: string, size: number) {
-    super(path, name, size);
+    return plainToInstance(LocalFile, { path, name, size });
   }
 }
 
 export class TmpFile extends BaseFile {
+  readonly containerPath?: string;
+
   static async from(pseudoPath: string, content: Uint8Array, containerPath?: string): Promise<TmpFile> {
     const tmpDir = await ensureTmpDir();
 
@@ -92,16 +89,7 @@ export class TmpFile extends BaseFile {
 
     await writeFile(path, content);
 
-    return new TmpFile(path, name, content.length, containerPath);
-  }
-
-  static clone(base: TmpFile): TmpFile {
-    return new TmpFile(base.path, base.name, base.size, base.containerPath);
-  }
-
-  private constructor(path: string, name: string, size: number,
-    readonly containerPath?: string) {
-    super(path, name, size);
+    return plainToInstance(TmpFile, { path, name, size: content.length, containerPath });
   }
 
   async free(): Promise<void> {
