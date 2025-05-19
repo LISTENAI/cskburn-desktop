@@ -68,7 +68,7 @@
             @click="() => outputShown = !outputShown">
             <template #icon>
               <n-icon>
-                <list-16-regular />
+                <List16Regular />
               </n-icon>
             </template>
           </n-button>

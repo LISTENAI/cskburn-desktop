@@ -10,7 +10,7 @@
             点击选择或将固件拖放到此处
             <template #icon>
               <n-icon>
-                <add-12-regular />
+                <Add12Regular />
               </n-icon>
             </template>
           </n-button>
@@ -52,7 +52,7 @@
                   @click="() => image?.format == 'hex' && revealFile(image.file.path)">
                   <template #icon>
                     <n-icon>
-                      <folder-open16-regular />
+                      <FolderOpen16Regular />
                     </n-icon>
                   </template>
                 </n-button>
@@ -64,7 +64,7 @@
                 <n-button size="small" quaternary circle :disabled="props.busy" @click="() => image = null">
                   <template #icon>
                     <n-icon>
-                      <delete-16-regular />
+                      <Delete16Regular />
                     </n-icon>
                   </template>
                 </n-button>
@@ -80,7 +80,7 @@
             点击或拖放添加更多固件
             <template #icon>
               <n-icon>
-                <add-12-regular />
+                <Add12Regular />
               </n-icon>
             </template>
           </n-button>
@@ -112,7 +112,7 @@
                 <n-button quaternary circle type="error" size="small">
                   <template #icon>
                     <n-icon>
-                      <error-circle-16-regular />
+                      <ErrorCircle16Regular />
                     </n-icon>
                   </template>
                 </n-button>
@@ -147,7 +147,7 @@
                   @click="() => revealFile(data.file.containerPath ?? data.file.path)">
                   <template #icon>
                     <n-icon>
-                      <folder-open-16-regular />
+                      <FolderOpen16Regular />
                     </n-icon>
                   </template>
                 </n-button>
@@ -159,7 +159,7 @@
                 <n-button quaternary circle size="small" :disabled="props.busy" @click="() => handlePartRemove(index)">
                   <template #icon>
                     <n-icon>
-                      <delete-16-regular />
+                      <Delete16Regular />
                     </n-icon>
                   </template>
                 </n-button>
