@@ -48,8 +48,7 @@
           <n-space>
             <n-tooltip>
               <template #trigger>
-                <n-button size="small" quaternary circle
-                  @click="() => image?.format == 'hex' && revealFile(image.file.path)">
+                <n-button size="small" quaternary circle @click="() => image?.format == 'hex' && image.file.reveal()">
                   <template #icon>
                     <n-icon>
                       <FolderOpen16Regular />
@@ -143,8 +142,7 @@
           <n-space>
             <n-tooltip>
               <template #trigger>
-                <n-button quaternary circle size="small"
-                  @click="() => revealFile(data.file.containerPath ?? data.file.path)">
+                <n-button quaternary circle size="small" @click="() => data.file.reveal()">
                   <template #icon>
                     <n-icon>
                       <FolderOpen16Regular />
@@ -200,7 +198,6 @@ import { open } from '@tauri-apps/plugin-dialog';
 import { UserError } from '@/userError';
 import { cleanUpImage, readImage, type IFlashImage } from '@/utils/images';
 import { fromHex, toHex } from '@/utils/hex';
-import { revealFile } from '@/utils/revealFile';
 import { busyOn } from '@/composables/busyOn';
 import { FlashStatus, type IFlashProgress } from '@/composables/progress';
 

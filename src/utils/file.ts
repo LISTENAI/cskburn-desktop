@@ -4,6 +4,7 @@ import { sum } from 'radash';
 import { plainToInstance, Type } from 'class-transformer';
 
 import { readHex, type ISection } from './readHex';
+import { revealFile } from './revealFile';
 
 const TEMP_DIR = 'unpacked';
 
@@ -40,6 +41,11 @@ export interface IFileRef {
   content(): Promise<Uint8Array>;
 
   /**
+   * Reveal the file in the file manager.
+   */
+  reveal(): Promise<void>;
+
+  /**
    * Free any resources associated with the file.
    */
   free: () => Promise<void>;
@@ -72,6 +78,10 @@ abstract class BaseFile implements IFileRef {
 
   async content(): Promise<Uint8Array> {
     return await readFile(this.path);
+  }
+
+  async reveal(): Promise<void> {
+    await revealFile(this.path);
   }
 
   async free(): Promise<void> {
@@ -111,6 +121,10 @@ export class TmpFile extends BaseFile {
     await writeFile(path, content);
 
     return plainToInstance(TmpFile, { path, name, size: content.length, mtime, containerPath });
+  }
+
+  async reveal(): Promise<void> {
+    await revealFile(this.containerPath ?? this.path);
   }
 
   async free(): Promise<void> {
