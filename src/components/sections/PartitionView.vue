@@ -73,7 +73,7 @@
           </n-space>
         </n-flex>
       </n-element>
-      <partition-table v-else-if="image.format == 'bin'" :partitions="image.partitions" :style="{ height: '100%' }">
+      <partition-table v-else-if="image.format == 'bin'" :partitions :style="{ height: '100%' }">
         <template #footer>
           <n-button text block :disabled="props.busy" @click="handleFilePick">
             点击或拖放添加更多固件
@@ -91,8 +91,8 @@
           <field-base selectable>{{ data.file.name }}</field-base>
         </template>
         <template #column-addr="{ index }">
-          <field-addr v-model:value="image.partitions[index].addr" :formatter="toHex" :parser="fromHex"
-            :placeholder="toHex(image.partitions[index].addr)" :disabled="props.busy" />
+          <field-addr v-model:value="partitions[index].addr" :formatter="toHex" :parser="fromHex"
+            :placeholder="toHex(partitions[index].addr)" :disabled="props.busy" />
         </template>
         <template #column-modified-at="{ data }">
           <field-base>
@@ -138,7 +138,7 @@
             <n-text>未开始</n-text>
           </template>
         </template>
-        <template #column-actions="{ data, index }">
+        <template #column-actions="{ data }">
           <n-space>
             <n-tooltip>
               <template #trigger>
@@ -154,7 +154,7 @@
             </n-tooltip>
             <n-tooltip>
               <template #trigger>
-                <n-button quaternary circle size="small" :disabled="props.busy" @click="() => handlePartRemove(index)">
+                <n-button quaternary circle size="small" :disabled="props.busy" @click="() => data.remove()">
                   <template #icon>
                     <n-icon>
                       <Delete16Regular />
@@ -172,7 +172,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import {
   NButton,
   NElement,
@@ -196,8 +196,9 @@ import { isEmpty } from 'radash';
 import { open } from '@tauri-apps/plugin-dialog';
 
 import { UserError } from '@/userError';
-import { cleanUpImage, readImage, type IFlashImage } from '@/utils/images';
+import { cleanUpImage, readImage, type IFlashImage, type IPartition } from '@/utils/images';
 import { fromHex, toHex } from '@/utils/hex';
+
 import { busyOn } from '@/composables/busyOn';
 import { FlashStatus, type IFlashProgress } from '@/composables/progress';
 
@@ -242,6 +243,29 @@ async function handleFiles(files: string[]) {
   }
 }
 
+interface IPartitionRecord extends IPartition {
+  remove(): void;
+}
+
+const partitions = computed<IPartitionRecord[]>(() => (image.value?.format == 'bin' ? image.value.partitions : [])
+  .map((part, partIndex) => ({
+    get addr() { return part.addr },
+    set addr(val: number) { part.addr = val },
+    file: part.file,
+    remove: async () => {
+      if (image.value?.format != 'bin') {
+        return;
+      }
+
+      image.value.partitions.splice(partIndex, 1);
+      if (isEmpty(image.value.partitions)) {
+        image.value = null;
+      }
+      await part.file.free();
+    },
+  }))
+);
+
 async function handleFilePick() {
   const selected = await open({
     multiple: true,
@@ -254,18 +278,6 @@ async function handleFilePick() {
   if (selected && selected.length > 0) {
     await handleFiles(selected);
   }
-}
-
-async function handlePartRemove(index: number) {
-  if (image.value?.format != 'bin') {
-    return;
-  }
-
-  const file = image.value.partitions[index].file;
-  const partitions = [...image.value.partitions];
-  partitions.splice(index, 1);
-  image.value = isEmpty(partitions) ? null : { ...image.value, partitions };
-  await file?.free();
 }
 </script>
 

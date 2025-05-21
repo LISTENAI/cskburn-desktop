@@ -4,26 +4,27 @@
     :data="dataWithFooter(props.partitions)" flex-height size="small" />
 </template>
 
-<script lang="ts" setup>
+<script lang="ts" setup generic="T extends IPartition">
 import type { Component } from 'vue';
 import { NDataTable, type DataTableColumns } from 'naive-ui';
 import { isEmpty } from 'radash';
+
 import type { IPartition } from '@/utils/images';
 
 import { columnsWithFooter, dataWithFooter } from '@/composables/naive-ui/footerDataTable';
 import { slottedColumns, type DataTableColumnSlots } from '@/composables/naive-ui/slottedDataTable';
 
 const props = defineProps<{
-  partitions: IPartition[];
+  partitions: T[];
 }>();
 
 type Keys = 'index' | 'name' | 'addr' | 'modified-at' | 'size' | 'progress' | 'actions';
 
 const slots = defineSlots<{
   footer?: Component;
-} & DataTableColumnSlots<Keys, IPartition>>();
+} & DataTableColumnSlots<Keys, T>>();
 
-const columns: DataTableColumns<IPartition> = [
+const columns: DataTableColumns<T> = [
   {
     title: '#',
     key: 'index',
