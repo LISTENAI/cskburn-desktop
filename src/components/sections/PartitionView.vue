@@ -91,8 +91,8 @@
           <field-base selectable>{{ data.file.name }}</field-base>
         </template>
         <template #column-addr="{ index }">
-          <field-addr v-model:value="state![index].addr" :placeholder="toHex(image.partitions[index].addr)"
-            :disabled="props.busy" @blur="() => handleAddrInputBlur(index)" />
+          <field-addr v-model:value="image.partitions[index].addr" :formatter="toHex" :parser="fromHex"
+            :placeholder="toHex(image.partitions[index].addr)" :disabled="props.busy" />
         </template>
         <template #column-modified-at="{ data }">
           <field-base>
@@ -172,7 +172,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, watch } from 'vue';
+import { ref } from 'vue';
 import {
   NButton,
   NElement,
@@ -210,10 +210,6 @@ import FieldBase from '@/components/datatable/FieldBase.vue';
 import FieldAddr from '@/components/datatable/FieldAddr.vue';
 import FieldProgress from '@/components/datatable/FieldProgress.vue';
 
-export interface IPartitionState {
-  addr: string;
-}
-
 const image = defineModel<IFlashImage | null>('image');
 
 const props = defineProps<{
@@ -244,27 +240,6 @@ async function handleFiles(files: string[]) {
       message.error('解析固件失败');
     }
   }
-}
-
-const state = ref<IPartitionState[] | null>(null);
-watch(image, (image) => {
-  state.value = image?.format == 'bin' ? image.partitions.map((part) => ({
-    addr: toHex(part.addr),
-  })) : null;
-}, { immediate: true });
-
-function handleAddrInputBlur(index: number) {
-  if (image.value?.format != 'bin' || state.value == null) return;
-
-  const addr = fromHex(state.value[index].addr);
-  if (typeof addr != 'number') {
-    state.value[index].addr = toHex(image.value.partitions[index].addr);
-    return;
-  }
-
-  const partitions = [...image.value.partitions];
-  partitions[index] = { ...partitions[index], addr };
-  image.value = { ...image.value, partitions };
 }
 
 async function handleFilePick() {
