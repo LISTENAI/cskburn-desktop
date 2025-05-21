@@ -1,16 +1,14 @@
 import { sum } from 'radash';
 
-import { LocalFile, type IFileRef } from './file';
+import { HexFile, LocalFile, type IFileRef } from './file';
 import { readLpk } from './readLpk';
-import { readHex, type ISection } from './readHex';
 
 export type IFlashImage = {
   format: 'bin';
   partitions: IPartition[];
 } | {
   format: 'hex';
-  file: IFileRef;
-  sections: ISection[];
+  file: HexFile;
 };
 
 export interface IPartition {
@@ -23,8 +21,7 @@ export async function readImage(paths: string[]): Promise<IFlashImage> {
   if (hexFile) {
     return {
       format: 'hex',
-      file: await LocalFile.from(hexFile),
-      sections: await readHex(hexFile),
+      file: await HexFile.from(hexFile),
     };
   }
 
@@ -54,7 +51,7 @@ export async function cleanUpImage(image: IFlashImage): Promise<void> {
 
 export function imageSize(image: IFlashImage, toIndex?: number): number {
   if (image.format == 'hex') {
-    return sum(image.sections.slice(0, toIndex), (section) => section.size);
+    return sum(image.file.sections.slice(0, toIndex), (section) => section.size);
   } else {
     return sum(image.partitions.slice(0, toIndex), (part) => part.file.size);
   }

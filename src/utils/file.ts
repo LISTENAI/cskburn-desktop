@@ -1,6 +1,9 @@
 import { appCacheDir, basename, join } from '@tauri-apps/api/path';
 import { mkdir, readFile, remove, stat, writeFile } from '@tauri-apps/plugin-fs';
+import { sum } from 'radash';
 import { plainToInstance, Type } from 'class-transformer';
+
+import { readHex, type ISection } from './readHex';
 
 const TEMP_DIR = 'unpacked';
 
@@ -81,6 +84,18 @@ export class LocalFile extends BaseFile {
     const name = await basename(path);
     const { size, mtime } = await stat(path);
     return plainToInstance(LocalFile, { path, name, size, mtime: mtime! });
+  }
+}
+
+export class HexFile extends BaseFile {
+  readonly sections!: ISection[];
+
+  static async from(path: string): Promise<HexFile> {
+    const name = await basename(path);
+    const { mtime } = await stat(path);
+    const sections = await readHex(path);
+    const size = sum(sections, (section) => section.size);
+    return plainToInstance(HexFile, { path, name, size, mtime: mtime!, sections });
   }
 }
 

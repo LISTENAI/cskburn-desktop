@@ -51,7 +51,7 @@ export function useFlashProgress(image: Ref<IFlashImage | null>, status: Ref<Fla
       const writing = image.value.partitions[current.value.index].file.size * current.value.progress;
       return (wrote + writing) / total;
     } else if (image.value.format == 'hex') {
-      const writing = image.value.sections[current.value.index].size * current.value.progress;
+      const writing = image.value.file.sections[current.value.index].size * current.value.progress;
       return (wrote + writing) / total;
     } else {
       return 0;
