@@ -6,11 +6,13 @@
     "main"
   ],
   "permissions": [
+    "core:app:default",
     "core:event:default",
     "core:path:default",
     "core:window:allow-destroy",
     "core:window:allow-request-user-attention",
     "core:window:allow-set-progress-bar",
+    "core:window:allow-set-title",
     "dialog:allow-confirm",
     "dialog:allow-open",
     "fs:default",
