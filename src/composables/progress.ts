@@ -1,5 +1,9 @@
 import { computed, reactive, ref, type Ref } from 'vue';
-import { imageSize, type IFlashImage } from '@/utils/images';
+import { sum } from 'radash';
+
+import type { IFlashImage } from '@/utils/images';
+
+import { useHexImage, usePartitions } from './partitions';
 
 export enum FlashStatus {
   CONNECTING,
@@ -17,19 +21,22 @@ export interface IFlashProgress {
   status: FlashStatus | null;
 }
 
-export function useFlashProgress(image: Ref<IFlashImage | null>, status: Ref<FlashStatus | null>): IFlashProgress {
+export function useFlashProgress(images: Ref<IFlashImage[]>, status: Ref<FlashStatus | null>): IFlashProgress {
   const current = ref<IFlashProgress['current']>(null);
+
+  const hexImage = useHexImage(images);
+  const partitions = usePartitions(images);
 
   const perPartition = computed(() => {
     if (current.value == null) {
       return null;
     }
 
-    if (image.value?.format != 'bin') {
+    if (hexImage.value) {
       return null;
     }
 
-    return image.value.partitions.map((_, index) => {
+    return partitions.value.map((_, index) => {
       if (current.value == null || current.value.index < index) {
         return null;
       } else if (current.value.index == index) {
@@ -41,20 +48,20 @@ export function useFlashProgress(image: Ref<IFlashImage | null>, status: Ref<Fla
   });
 
   const progress = computed(() => {
-    if (image.value == null || current.value == null) {
+    if (images.value.length == 0 || current.value == null) {
       return 0;
     }
 
-    const total = imageSize(image.value);
-    const wrote = imageSize(image.value, current.value.index);
-    if (image.value.format == 'bin') {
-      const writing = image.value.partitions[current.value.index].file.size * current.value.progress;
-      return (wrote + writing) / total;
-    } else if (image.value.format == 'hex') {
-      const writing = image.value.file.sections[current.value.index].size * current.value.progress;
-      return (wrote + writing) / total;
+    if (hexImage.value) {
+      const { file } = hexImage.value;
+      const wrote = sum(file.sections.slice(0, current.value.index), (section) => section.size);
+      const writing = file.sections[current.value.index].size * current.value.progress;
+      return (wrote + writing) / file.size;
     } else {
-      return 0;
+      const total = sum(partitions.value, (part) => part.file.size);
+      const wrote = sum(partitions.value.slice(0, current.value.index), (part) => part.file.size);
+      const writing = partitions.value[current.value.index].file.size * current.value.progress;
+      return (wrote + writing) / total;
     }
   });
 

@@ -2,7 +2,10 @@ import { appCacheDir, basename, join } from '@tauri-apps/api/path';
 import { mkdir, readFile, remove, stat, writeFile } from '@tauri-apps/plugin-fs';
 import { sum } from 'radash';
 import { plainToInstance, Type } from 'class-transformer';
+import pMap from 'p-map';
 
+import type { IPartition } from './images';
+import { readLpk } from './readLpk';
 import { readHex, type ISection } from './readHex';
 import { revealFile } from './revealFile';
 
@@ -55,7 +58,7 @@ export async function cleanUpTmpFiles(): Promise<void> {
   const tmpDir = await join(await appCacheDir(), TEMP_DIR);
   try {
     await remove(tmpDir, { recursive: true });
-  } catch (e) {
+  } catch {
     // do nothing
   }
 }
@@ -106,6 +109,21 @@ export class HexFile extends BaseFile {
     const sections = await readHex(path);
     const size = sum(sections, (section) => section.size);
     return plainToInstance(HexFile, { path, name, size, mtime: mtime!, sections });
+  }
+}
+
+export class LpkFile extends BaseFile {
+  readonly partitions!: IPartition[];
+
+  static async from(path: string): Promise<LpkFile> {
+    const name = await basename(path);
+    const { size, mtime } = await stat(path);
+    const partitions = await readLpk(path);
+    return plainToInstance(LpkFile, { path, name, size, mtime: mtime!, partitions });
+  }
+
+  async free(): Promise<void> {
+    await pMap(this.partitions, async (part) => await part.file.free());
   }
 }
 

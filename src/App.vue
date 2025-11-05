@@ -32,7 +32,7 @@
       </n-descriptions>
     </n-spin>
 
-    <partition-view v-model:image="image" :busy="busyForFlash" :progress :errors :style="{ flex: '1 1 auto' }" />
+    <partition-view v-model:images="images" :busy="busyForFlash" :progress :errors :style="{ flex: '1 1 auto' }" />
 
     <log-view v-if="outputShown" :logs="output.join('\n')" :style="{ height: '200px' }" />
 
@@ -112,12 +112,14 @@ import { getCurrentWindow, ProgressBarStatus, UserAttentionType } from '@tauri-a
 import { confirm } from '@tauri-apps/plugin-dialog';
 import { List16Regular } from '@vicons/fluent';
 import { throttle } from 'radash';
-import { imageSize, type IFlashImage } from '@/utils/images';
+
+import type { IFlashImage } from '@/utils/images';
 import { cskburn, type ICSKBurnResult } from '@/utils/cskburn';
 import { cleanUpTmpFiles } from '@/utils/file';
 
 import { busyOn } from '@/composables/busyOn';
-import { FlashStatus, useFlashProgress } from './composables/progress';
+import { FlashStatus, useFlashProgress } from '@/composables/progress';
+import { useHexImage, usePartitions } from '@/composables/partitions';
 import { useListen } from '@/composables/tauri/useListen';
 
 import AutoUpdater from '@/components/sections/AutoUpdater.vue';
@@ -128,7 +130,7 @@ import LogView from '@/components/sections/LogView.vue';
 import SelectableText from '@/components/common/SelectableText.vue';
 
 const selectedPort = ref<string | null>(null);
-const image = ref<IFlashImage | null>(null);
+const images = ref<IFlashImage[]>([]);
 
 const chipId = ref<string | null>(null);
 const flashId = ref<string | null>(null);
@@ -142,7 +144,7 @@ const flashInfo = computed(() => {
 
 const status = ref<FlashStatus | null>(null);
 const failure = ref<string | null>(null);
-const progress = useFlashProgress(image, status);
+const progress = useFlashProgress(images, status);
 
 const busyForInfo = ref(false);
 const busyForFlash = computed(() =>
@@ -150,7 +152,7 @@ const busyForFlash = computed(() =>
   status.value == FlashStatus.FLASHING ||
   status.value == FlashStatus.VERIFYING);
 
-const readyToFlash = computed(() => selectedPort.value != null && image.value != null && !hasError.value);
+const readyToFlash = computed(() => selectedPort.value != null && images.value.length > 0 && !hasError.value);
 
 const message = useMessage();
 
@@ -195,14 +197,27 @@ async function fetchInfo(): Promise<void> {
   }
 }
 
+const hexImage = useHexImage(images);
+const partitions = usePartitions(images);
+
 const errors = computed(() => {
-  if (image.value?.format == 'bin') {
-    return image.value.partitions.map((partition, _index, partitions) => {
+  if (hexImage.value) {
+    // For now, we can only roughly compare the total size of all sections
+    // against the flash size. The actual end address of the image is unknown,
+    // as there's no straightforward way to compute relative offsets from
+    // absolute RAM addresses.
+    if (flashSize.value != null && hexImage.value.file.size > flashSize.value) {
+      return ['超出 Flash 大小'];
+    } else {
+      return [];
+    }
+  } else {
+    return partitions.value.map((partition, index) => {
       const start = partition.addr;
       const end = start + partition.file.size;
 
-      for (const [otherIndex, other] of partitions.entries()) {
-        if (partition == other) {
+      for (const [otherIndex, other] of partitions.value.entries()) {
+        if (otherIndex == index) {
           continue;
         }
 
@@ -222,13 +237,7 @@ const errors = computed(() => {
         return '超出 Flash 大小';
       }
     });
-  } else if (image.value?.format == 'hex') {
-    if (flashSize.value != null && imageSize(image.value) > flashSize.value) {
-      return ['超出 Flash 大小'];
-    }
   }
-
-  return [];
 });
 
 const hasError = computed(() => errors.value.some((error) => !!error));
@@ -236,7 +245,7 @@ const hasError = computed(() => errors.value.some((error) => !!error));
 const output = ref<string[]>([]);
 const outputShown = ref(false);
 
-watch(image, () => {
+watch(images, () => {
   progress.current = null;
   status.value = null;
   failure.value = null;
@@ -245,14 +254,16 @@ watch(image, () => {
 let aborter: AbortController | undefined;
 
 async function startFlash(): Promise<void> {
-  const args = ['--verify-all'];
-  if (image.value == null) {
+  if (images.value.length == 0) {
     return;
-  } else if (image.value.format == 'hex') {
-    args.push(image.value.file.path);
-  } else if (image.value.format == 'bin') {
-    for (const part of image.value.partitions) {
-      args.push(part.addr.toString(), part.file.path);
+  }
+
+  const args = ['--verify-all'];
+  if (hexImage.value) {
+    args.push(hexImage.value.file.path);
+  } else {
+    for (const partition of partitions.value) {
+      args.push(partition.addr.toString(), partition.file.path);
     }
   }
 

@@ -1,58 +1,53 @@
-import { sum } from 'radash';
+import pMap from 'p-map';
 
-import { HexFile, LocalFile, type IFileRef } from './file';
-import { readLpk } from './readLpk';
+import { HexFile, LocalFile, LpkFile, type IFileRef } from './file';
 
-export type IFlashImage = {
-  format: 'bin';
-  partitions: IPartition[];
-} | {
-  format: 'hex';
-  file: HexFile;
-};
+export type IFlashImage =
+  ({
+    format: 'bin';
+  } & IPartition) |
+  {
+    format: 'lpk';
+    file: LpkFile;
+  } |
+  {
+    format: 'hex';
+    file: HexFile;
+  };
 
 export interface IPartition {
   addr: number;
   file: IFileRef;
 }
 
-export async function readImage(paths: string[]): Promise<IFlashImage> {
-  const hexFile = paths.find((path) => path.toLowerCase().endsWith('.hex'));
-  if (hexFile) {
-    return {
+export async function readImages(paths: string[]): Promise<IFlashImage[]> {
+  const files = paths.map((path) => ({
+    path,
+    ext: path.toLowerCase().split('.').pop(),
+  }));
+
+  const hexFile = files.find(({ ext }) => ext == 'hex');
+  if (hexFile) {  // Only one hex file is allowed
+    return [{
       format: 'hex',
-      file: await HexFile.from(hexFile),
-    };
+      file: await HexFile.from(hexFile.path),
+    }];
   }
 
-  const partitions: IPartition[] = [];
-
-  for (const path of paths) {
-    if (path.toLowerCase().endsWith('.lpk')) {
-      partitions.push(...await readLpk(path));
-    } else {
-      partitions.push({
+  return await pMap(files, async ({ path, ext }) => {
+    if (ext == 'bin') {
+      return {
+        format: 'bin',
         addr: 0,
         file: await LocalFile.from(path),
-      });
+      };
+    } else if (ext == 'lpk') {
+      return {
+        format: 'lpk',
+        file: await LpkFile.from(path),
+      };
+    } else {
+      throw new Error(`Unsupported file type: ${ext}`);
     }
-  }
-
-  return { format: 'bin', partitions };
-}
-
-export async function cleanUpImage(image: IFlashImage): Promise<void> {
-  if (image.format == 'hex') {
-    await image.file.free();
-  } else {
-    await Promise.all(image.partitions.map((part) => part.file.free()));
-  }
-}
-
-export function imageSize(image: IFlashImage, toIndex?: number): number {
-  if (image.format == 'hex') {
-    return sum(image.file.sections.slice(0, toIndex), (section) => section.size);
-  } else {
-    return sum(image.partitions.slice(0, toIndex), (part) => part.file.size);
-  }
+  });
 }

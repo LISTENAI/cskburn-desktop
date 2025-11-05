@@ -19,6 +19,7 @@
     "@tauri-apps/plugin-updater": "^2.7.1",
     "class-transformer": "^0.5.1",
     "naive-ui": "^2.38.1",
+    "p-map": "^7.0.3",
     "p-queue": "^8.1.0",
     "radash": "^12.1.0",
     "reflect-metadata": "^0.2.2",

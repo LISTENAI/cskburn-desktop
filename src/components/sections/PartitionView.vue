@@ -4,7 +4,7 @@
       正在解析
     </template>
     <file-dropper :disabled="props.busy" :style="{ height: '100%' }" @file-drop="handleFiles">
-      <n-element v-if="image == null" :class="$style.empty" :style="{ height: '100%' }">
+      <n-element v-if="images.length == 0" :class="$style.empty" :style="{ height: '100%' }">
         <n-flex align="center" justify="center" :style="{ height: '100%' }">
           <n-button quaternary round size="large" @click="handleFilePick">
             点击选择或将固件拖放到此处
@@ -16,12 +16,12 @@
           </n-button>
         </n-flex>
       </n-element>
-      <n-element v-else-if="image.format == 'hex'" :class="$style.empty" :style="{ height: '100%' }">
+      <n-element v-else-if="hexImage" :class="$style.empty" :style="{ height: '100%' }">
         <n-flex :class="$style.hexFile" vertical align="center" justify="center" :wrap="false"
           :style="{ height: '100%' }">
-          <selectable-text :class="$style.name" selectable>{{ image.file.name }}</selectable-text>
+          <selectable-text :class="$style.name" selectable>{{ hexImage.file.name }}</selectable-text>
           <n-space>
-            <file-size :class="$style.size" :size="image.file.size" />
+            <file-size :class="$style.size" :size="hexImage.file.size" />
             <span>-</span>
             <template v-if="props.errors[0]">
               <n-text type="error">{{ props.errors[0] }}</n-text>
@@ -48,7 +48,7 @@
           <n-space>
             <n-tooltip>
               <template #trigger>
-                <n-button size="small" quaternary circle @click="() => image?.format == 'hex' && image.file.reveal()">
+                <n-button size="small" quaternary circle @click="() => hexImage?.file.reveal()">
                   <template #icon>
                     <n-icon>
                       <FolderOpen16Regular />
@@ -60,7 +60,7 @@
             </n-tooltip>
             <n-tooltip>
               <template #trigger>
-                <n-button size="small" quaternary circle :disabled="props.busy" @click="() => image = null">
+                <n-button size="small" quaternary circle :disabled="props.busy" @click="() => images = []">
                   <template #icon>
                     <n-icon>
                       <Delete16Regular />
@@ -73,7 +73,7 @@
           </n-space>
         </n-flex>
       </n-element>
-      <partition-table v-else-if="image.format == 'bin'" :partitions :style="{ height: '100%' }">
+      <partition-table v-else :partitions :style="{ height: '100%' }">
         <template #footer>
           <n-button text block :disabled="props.busy" @click="handleFilePick">
             点击或拖放添加更多固件
@@ -193,14 +193,16 @@ import {
   FolderOpen16Regular,
 } from '@vicons/fluent';
 import { isEmpty } from 'radash';
+import pMap from 'p-map';
 import { open } from '@tauri-apps/plugin-dialog';
 
 import { UserError } from '@/userError';
-import { cleanUpImage, readImage, type IFlashImage, type IPartition } from '@/utils/images';
+import { readImages, type IFlashImage, type IPartition } from '@/utils/images';
 import { fromHex, toHex } from '@/utils/hex';
 
 import { busyOn } from '@/composables/busyOn';
 import { FlashStatus, type IFlashProgress } from '@/composables/progress';
+import { useHexImage } from '@/composables/partitions';
 
 import FileDropper from '@/components/common/FileDropper.vue';
 import FileSize from '@/components/common/FileSize.vue';
@@ -211,7 +213,7 @@ import FieldBase from '@/components/datatable/FieldBase.vue';
 import FieldAddr from '@/components/datatable/FieldAddr.vue';
 import FieldProgress from '@/components/datatable/FieldProgress.vue';
 
-const image = defineModel<IFlashImage | null>('image');
+const images = defineModel<IFlashImage[]>('images', { default: [] });
 
 const props = defineProps<{
   busy: boolean;
@@ -224,14 +226,14 @@ const message = useMessage();
 const parsing = ref(false);
 async function handleFiles(files: string[]) {
   try {
-    const parsed = await busyOn(readImage(files), parsing);
-    if (parsed.format == 'hex' || parsed.format != image.value?.format) {
-      if (image.value) {
-        cleanUpImage(image.value);
-      }
-      image.value = parsed;
+    const parsed = await busyOn(readImages(files), parsing);
+    const hexImage = parsed.find((image) => image.format == 'hex');
+    if (hexImage) {
+      // Only one hex file is allowed
+      await pMap(images.value, (image) => image.file.free());
+      images.value = [hexImage];
     } else {
-      image.value = { ...image.value, partitions: image.value.partitions.concat(parsed.partitions) };
+      images.value = [...images.value, ...parsed];
     }
   } catch (e) {
     if (e instanceof UserError) {
@@ -243,28 +245,42 @@ async function handleFiles(files: string[]) {
   }
 }
 
+const hexImage = useHexImage(images);
+
 interface IPartitionRecord extends IPartition {
   remove(): void;
 }
 
-const partitions = computed<IPartitionRecord[]>(() => (image.value?.format == 'bin' ? image.value.partitions : [])
-  .map((part, partIndex) => ({
-    get addr() { return part.addr },
-    set addr(val: number) { part.addr = val },
-    file: part.file,
-    remove: async () => {
-      if (image.value?.format != 'bin') {
-        return;
-      }
-
-      image.value.partitions.splice(partIndex, 1);
-      if (isEmpty(image.value.partitions)) {
-        image.value = null;
-      }
-      await part.file.free();
-    },
-  }))
-);
+const partitions = computed<IPartitionRecord[]>(() => images.value.flatMap((image, imageIndex) => {
+  switch (image.format) {
+    case 'bin':
+      return {
+        get addr() { return image.addr },
+        set addr(val: number) { image.addr = val },
+        file: image.file,
+        remove: async () => {
+          images.value.splice(imageIndex, 1);
+          await image.file.free();
+        },
+      };
+    case 'lpk':
+      return image.file.partitions.map((part, partIndex) => ({
+        get addr() { return part.addr },
+        set addr(val: number) { part.addr = val },
+        file: part.file,
+        remove: async () => {
+          image.file.partitions.splice(partIndex, 1);
+          await part.file.free();
+          if (isEmpty(image.file.partitions)) {
+            images.value.splice(imageIndex, 1);
+            await image.file.free();
+          }
+        },
+      }));
+    default:
+      return [];
+  }
+}));
 
 async function handleFilePick() {
   const selected = await open({
