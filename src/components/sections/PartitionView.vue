@@ -227,11 +227,15 @@ const parsing = ref(false);
 async function handleFiles(files: string[]) {
   try {
     const parsed = await busyOn(readImages(files), parsing);
-    const hexImage = parsed.find((image) => image.format == 'hex');
-    if (hexImage) {
+    const openedHexImage = images.value.find((image) => image.format == 'hex');
+    const pendingHexImage = parsed.find((image) => image.format == 'hex');
+    if (pendingHexImage) {
       // Only one hex file is allowed
       await pMap(images.value, (image) => image.file.free());
-      images.value = [hexImage];
+      images.value = [pendingHexImage];
+    } else if (openedHexImage) {
+      await openedHexImage.file.free();
+      images.value = parsed;
     } else {
       images.value = [...images.value, ...parsed];
     }
