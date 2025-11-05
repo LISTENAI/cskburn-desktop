@@ -44,7 +44,7 @@ onMounted(async () => {
     return;
   }
 
-  if (update?.available) {
+  if (update) {
     dialog.create({
       title: `发现新版本 ${update.version}，是否更新？`,
       closable: false,
