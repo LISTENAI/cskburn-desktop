@@ -27,6 +27,7 @@ export interface ICSKBurnResult {
 export async function cskburn(
   port: string,
   baud: number,
+  chip: string,
   args: string[],
   opts?: ICSKBurnEventHandlers & { signal?: AbortSignal },
 ): Promise<ICSKBurnResult> {
@@ -34,7 +35,7 @@ export async function cskburn(
     const command = Command.sidecar('cskburn-cli/cskburn', [
       '-s', port,
       '-b', `${baud}`,
-      '--chip', '6',
+      '--chip', chip,
       '--verbose',
       '--chip-id',
       '--probe-timeout', '1000',
