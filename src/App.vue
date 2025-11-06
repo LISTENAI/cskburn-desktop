@@ -14,17 +14,22 @@
             <port-selector v-model:port="selectedPort" :disabled="busyForInfo || busyForFlash"
               :style="{ width: '300px' }" />
           </n-flex>
-          <n-button secondary :disabled="selectedPort == null || busyForInfo || busyForFlash" :style="{ width: '6em' }"
-            @click="fetchInfo">
-            获取信息
-          </n-button>
+          <n-flex align="center">
+            <div>芯片:</div>
+            <n-select v-model:value="selectedChip" placeholder="请选择芯片" :options="supportedChips"
+              :disabled="busyForInfo || busyForFlash" :style="{ width: '8em' }" />
+          </n-flex>
         </n-flex>
         <n-flex align="center" size="large">
-          <div>
-            Chip ID: <selectable-text selectable>{{ chipId || 'N/A' }}</selectable-text>
+          <n-button secondary :disabled="selectedPort == null || selectedChip == null || busyForInfo || busyForFlash"
+            :style="{ width: '6em' }" @click="fetchInfo">
+            获取信息
+          </n-button>
+          <div v-if="chipId">
+            Chip ID: <selectable-text selectable>{{ chipId }}</selectable-text>
           </div>
-          <div>
-            Flash ID: <selectable-text selectable>{{ flashInfo || 'N/A' }}</selectable-text>
+          <div v-if="flashInfo">
+            Flash ID: <selectable-text selectable>{{ flashInfo }}</selectable-text>
           </div>
         </n-flex>
       </n-flex>
@@ -127,7 +132,13 @@ import LogView from '@/components/sections/LogView.vue';
 
 import SelectableText from '@/components/common/SelectableText.vue';
 
+const supportedChips: SelectOption[] = [
+  { value: 'venus', label: 'CSK6' },
+  { value: 'arcs', label: 'LS26' },
+];
+
 const selectedPort = ref<string | null>(null);
+const selectedChip = ref<string | null>(null);
 const images = ref<IFlashImage[]>([]);
 
 const chipId = ref<string | null>(null);
@@ -150,7 +161,11 @@ const busyForFlash = computed(() =>
   status.value == FlashStatus.FLASHING ||
   status.value == FlashStatus.VERIFYING);
 
-const readyToFlash = computed(() => selectedPort.value != null && images.value.length > 0 && !hasError.value);
+const readyToFlash = computed(() =>
+  selectedPort.value != null &&
+  selectedChip.value != null &&
+  images.value.length > 0 &&
+  !hasError.value);
 
 const message = useMessage();
 
@@ -164,7 +179,7 @@ async function fetchInfo(): Promise<void> {
   let error: unknown;
 
   try {
-    result = await busyOn(cskburn(selectedPort.value!, 1500000, [], {
+    result = await busyOn(cskburn(selectedPort.value!, 1500000, selectedChip.value!, [], {
       onOutput(line) {
         output.value.push(line);
       },
@@ -275,7 +290,7 @@ async function startFlash(): Promise<void> {
   let error: unknown;
 
   try {
-    result = await cskburn(selectedPort.value!, 1500000, args, {
+    result = await cskburn(selectedPort.value!, 1500000, selectedChip.value!, args, {
       signal: aborter.signal,
       onOutput(line) {
         output.value.push(line);
