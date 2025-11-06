@@ -1,4 +1,4 @@
-import { Command } from '@tauri-apps/plugin-shell';
+import { Command, type Child } from '@tauri-apps/plugin-shell';
 import PQueue from 'p-queue';
 
 import { decode } from './strings';
@@ -25,10 +25,12 @@ export interface ICSKBurnResult {
 }
 
 export async function cskburn(
-  port: string, baud: number, args: string[],
+  port: string,
+  baud: number,
+  args: string[],
   opts?: ICSKBurnEventHandlers & { signal?: AbortSignal },
 ): Promise<ICSKBurnResult> {
-  return new Promise(async (resolve, reject) => {
+  return new Promise((resolve, reject) => {
     const command = Command.sidecar('cskburn-cli/cskburn', [
       '-s', port,
       '-b', `${baud}`,
@@ -53,26 +55,26 @@ export async function cskburn(
         opts?.onWaitingForDevice?.();
       } else if (output == 'Entering update mode...') {
         opts?.onEnteringUpdateMode?.();
-      } else if (match = output.match(/^chip\-id: (.+)$/)) {
+      } else if ((match = output.match(/^chip-id: (.+)$/))) {
         opts?.onChipId?.(match[1]);
-      } else if (match = output.match(/^flash\-id: (.+)$/)) {
+      } else if ((match = output.match(/^flash-id: (.+)$/))) {
         const flashId = match[1];
         const flashSize = Math.pow(2, parseInt(flashId.substring(4, 6), 16));
         opts?.onFlashId?.(flashId, flashSize);
-      } else if (match = output.match(/^Burning partition (\d+)\/(\d+)\.\.\. \((0x.+),/)) {
+      } else if ((match = output.match(/^Burning partition (\d+)\/(\d+)\.\.\. \((0x.+),/))) {
         currentIndex = parseInt(match[1]) - 1;
         opts?.onPartition?.(currentIndex, parseInt(match[2]), parseInt(match[3], 16));
-      } else if (match = output.match(/^(\d+\.\d{2}) KB \/ (\d+\.\d{2}) KB/)) {
+      } else if ((match = output.match(/^(\d+\.\d{2}) KB \/ (\d+\.\d{2}) KB/))) {
         opts?.onProgress?.(currentIndex, parseFloat(match[1]) / parseFloat(match[2]));
       } else if (output.startsWith('Writing took')) {
         opts?.onWrote?.(currentIndex);
-      } else if (match = output.match(/^md5 \(.+\): (.+)$/)) {
+      } else if ((match = output.match(/^md5 \(.+\): (.+)$/))) {
         opts?.onVerified?.(currentIndex, match[1]);
       } else if (output == 'Resetting...') {
         opts?.onResetting?.();
       } else if (output == 'Finished') {
         opts?.onFinished?.();
-      } else if (match = output.match(/^ERROR: (.+)$/)) {
+      } else if ((match = output.match(/^ERROR: (.+)$/))) {
         opts?.onError?.(match[1]);
       }
     }
@@ -99,10 +101,14 @@ export async function cskburn(
       reject(data);
     });
 
-    const child = await command.spawn();
+    let child: Child | undefined;
+
+    command.spawn()
+      .then((c) => child = c)
+      .catch((err) => reject(err));
 
     opts?.signal?.addEventListener('abort', () => {
-      child.kill();
+      child?.kill();
     });
   });
 }
