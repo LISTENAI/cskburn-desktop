@@ -6,38 +6,36 @@
   }">
     <auto-updater />
 
-    <n-spin :show="busyForInfo" :style="{ width: '600px' }">
-      <n-descriptions :column="2" label-placement="left" :label-class="$style.infoLabel">
-        <n-descriptions-item label="串口" :span="2" :label-style="{ verticalAlign: 'middle' }"
-          :content-style="{ verticalAlign: 'middle' }">
-          <n-space>
+    <n-spin :show="busyForInfo" :style="{ width: 'fit-content' }">
+      <n-flex vertical>
+        <n-flex align="center" size="large">
+          <n-flex align="center">
+            <div>端口:</div>
             <port-selector v-model:port="selectedPort" :disabled="busyForInfo || busyForFlash"
               :style="{ width: '300px' }" />
-            <n-button secondary :disabled="selectedPort == null || busyForInfo || busyForFlash"
-              :style="{ width: '6em' }" @click="fetchInfo">
-              获取信息
-            </n-button>
-          </n-space>
-        </n-descriptions-item>
-        <n-descriptions-item label="Chip ID" :content-style="{ width: '12em' }">
-          <n-element :class="$style.infoText">
-            <selectable-text selectable>{{ chipId || 'N/A' }}</selectable-text>
-          </n-element>
-        </n-descriptions-item>
-        <n-descriptions-item label="Flash ID" :content-style="{ width: '12em' }">
-          <n-element :class="$style.infoText">
-            <selectable-text selectable>{{ flashInfo || 'N/A' }}</selectable-text>
-          </n-element>
-        </n-descriptions-item>
-      </n-descriptions>
+          </n-flex>
+          <n-button secondary :disabled="selectedPort == null || busyForInfo || busyForFlash" :style="{ width: '6em' }"
+            @click="fetchInfo">
+            获取信息
+          </n-button>
+        </n-flex>
+        <n-flex align="center" size="large">
+          <div>
+            Chip ID: <selectable-text selectable>{{ chipId || 'N/A' }}</selectable-text>
+          </div>
+          <div>
+            Flash ID: <selectable-text selectable>{{ flashInfo || 'N/A' }}</selectable-text>
+          </div>
+        </n-flex>
+      </n-flex>
     </n-spin>
 
     <partition-view v-model:images="images" :busy="busyForFlash" :progress :errors :style="{ flex: '1 1 auto' }" />
 
     <log-view v-if="outputShown" :logs="output.join('\n')" :style="{ height: '200px' }" />
 
-    <n-flex align="center">
-      <n-flex align="center" :style="{ width: 'auto', flex: '1 1 auto' }">
+    <n-flex align="center" :wrap="false">
+      <n-flex align="center" :style="{ flex: '1 1 auto', minWidth: '0' }">
         <template v-if="status == FlashStatus.CONNECTING">
           <n-spin size="small" />
         </template>
@@ -62,32 +60,34 @@
         </template>
       </n-flex>
 
-      <n-tooltip>
-        <template #trigger>
-          <n-button quaternary :type="outputShown ? 'primary' : 'default'" :focusable="false"
-            @click="() => outputShown = !outputShown">
-            <template #icon>
-              <n-icon>
-                <List16Regular />
-              </n-icon>
-            </template>
-          </n-button>
-        </template>
-        <template v-if="outputShown">
-          隐藏日志
-        </template>
-        <template v-else>
-          显示日志
-        </template>
-      </n-tooltip>
+      <n-flex align="center" :wrap="false" :style="{ flex: '0 0 auto' }">
+        <n-tooltip>
+          <template #trigger>
+            <n-button quaternary :type="outputShown ? 'primary' : 'default'" :focusable="false"
+              @click="() => outputShown = !outputShown">
+              <template #icon>
+                <n-icon>
+                  <List16Regular />
+                </n-icon>
+              </template>
+            </n-button>
+          </template>
+          <template v-if="outputShown">
+            隐藏日志
+          </template>
+          <template v-else>
+            显示日志
+          </template>
+        </n-tooltip>
 
-      <n-button v-if="busyForFlash" size="large" :style="{ flex: '0 0 140px' }" @click="stopFlash">
-        停止
-      </n-button>
-      <n-button v-else size="large" type="primary" :disabled="!readyToFlash || busyForInfo"
-        :style="{ flex: '0 0 140px' }" @click="startFlash">
-        开始烧录
-      </n-button>
+        <n-button v-if="busyForFlash" size="large" :style="{ width: '140px' }" @click="stopFlash">
+          停止
+        </n-button>
+        <n-button v-else size="large" type="primary" :disabled="!readyToFlash || busyForInfo"
+          :style="{ width: '140px' }" @click="startFlash">
+          开始烧录
+        </n-button>
+      </n-flex>
     </n-flex>
   </n-flex>
 </template>
@@ -96,17 +96,15 @@
 import { computed, ref, watch } from 'vue';
 import {
   NButton,
-  NDescriptions,
-  NDescriptionsItem,
-  NElement,
   NFlex,
   NIcon,
-  NSpace,
   NProgress,
+  NSelect,
   NSpin,
   NText,
   NTooltip,
   useMessage,
+  type SelectOption,
 } from 'naive-ui';
 import { getCurrentWindow, ProgressBarStatus, UserAttentionType } from '@tauri-apps/api/window';
 import { confirm } from '@tauri-apps/plugin-dialog';
@@ -395,16 +393,6 @@ useListen(() => getCurrentWindow().onCloseRequested(async (event) => {
   height: 100vh;
   user-select: none;
   cursor: default;
-}
-
-.infoLabel {
-  display: inline-block;
-  width: 6em;
-  text-align: right;
-}
-
-.infoText {
-  font-family: var(--font-family-mono);
 }
 
 .result {
