@@ -29,7 +29,8 @@
             Chip ID: <selectable-text selectable>{{ chipId }}</selectable-text>
           </div>
           <div v-if="flashInfo">
-            Flash ID: <selectable-text selectable>{{ flashInfo }}</selectable-text>
+            Flash ID: <selectable-text selectable>{{ flashInfo.id }}</selectable-text>
+            ({{ Math.round(flashInfo.size / 1024 / 1024) }} MB)
           </div>
         </n-flex>
       </n-flex>
@@ -132,6 +133,8 @@ import LogView from '@/components/sections/LogView.vue';
 
 import SelectableText from '@/components/common/SelectableText.vue';
 
+const BAUDRATE = 1_500_000;
+
 const supportedChips: SelectOption[] = [
   { value: 'venus', label: 'CSK6' },
   { value: 'arcs', label: 'LS26' },
@@ -142,14 +145,9 @@ const selectedChip = ref<string | null>(null);
 const images = ref<IFlashImage[]>([]);
 
 const chipId = ref<string | null>(null);
-const flashId = ref<string | null>(null);
-const flashSize = ref<number | null>(null);
+const flashInfo = ref<{ id: string, size: number } | null>(null);
 
-const flashInfo = computed(() => {
-  if (flashId.value != null && flashSize.value != null) {
-    return `${flashId.value} (${Math.round(flashSize.value / 1024 / 1024)} MB)`;
-  }
-});
+const flashSize = computed(() => flashInfo.value?.size ?? null);
 
 const status = ref<FlashStatus | null>(null);
 const failure = ref<string | null>(null);
@@ -171,15 +169,14 @@ const message = useMessage();
 
 async function fetchInfo(): Promise<void> {
   chipId.value = null;
-  flashId.value = null;
-  flashSize.value = null;
+  flashInfo.value = null;
   output.value.splice(0);
 
   let result: ICSKBurnResult | undefined;
   let error: unknown;
 
   try {
-    result = await busyOn(cskburn(selectedPort.value!, 1500000, selectedChip.value!, [], {
+    result = await busyOn(cskburn(selectedPort.value!, BAUDRATE, selectedChip.value!, [], {
       onOutput(line) {
         output.value.push(line);
       },
@@ -187,8 +184,7 @@ async function fetchInfo(): Promise<void> {
         chipId.value = id;
       },
       onFlashId(id, size) {
-        flashId.value = id;
-        flashSize.value = size;
+        flashInfo.value = { id, size };
       },
     }), busyForInfo);
   } catch (e) {
@@ -212,6 +208,12 @@ async function fetchInfo(): Promise<void> {
 
 const hexImage = useHexImage(images);
 const partitions = usePartitions(images);
+
+watch(images, () => {
+  progress.current = null;
+  status.value = null;
+  failure.value = null;
+});
 
 const errors = computed(() => {
   if (hexImage.value) {
@@ -258,12 +260,6 @@ const hasError = computed(() => errors.value.some((error) => !!error));
 const output = ref<string[]>([]);
 const outputShown = ref(false);
 
-watch(images, () => {
-  progress.current = null;
-  status.value = null;
-  failure.value = null;
-});
-
 let aborter: AbortController | undefined;
 
 async function startFlash(): Promise<void> {
@@ -290,7 +286,7 @@ async function startFlash(): Promise<void> {
   let error: unknown;
 
   try {
-    result = await cskburn(selectedPort.value!, 1500000, selectedChip.value!, args, {
+    result = await cskburn(selectedPort.value!, BAUDRATE, selectedChip.value!, args, {
       signal: aborter.signal,
       onOutput(line) {
         output.value.push(line);
@@ -299,8 +295,7 @@ async function startFlash(): Promise<void> {
         chipId.value = id;
       },
       onFlashId(id, size) {
-        flashId.value = id;
-        flashSize.value = size;
+        flashInfo.value = { id, size };
       },
       onPartition(index, _total, _addr) {
         progress.current = { index, progress: 0 };
