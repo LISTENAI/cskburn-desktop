@@ -4,6 +4,8 @@ use serde::{Serialize, Serializer};
 pub enum Error {
     #[error(transparent)]
     Io(#[from] std::io::Error),
+    #[error(transparent)]
+    Adb(#[from] adb_client::RustADBError),
     #[error("Invalid LPK: {0}")]
     InvalidLpk(String),
 }
