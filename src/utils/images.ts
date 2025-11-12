@@ -35,19 +35,17 @@ export async function readImages(paths: string[]): Promise<IFlashImage[]> {
   }
 
   return await pMap(files, async ({ path, ext }) => {
-    if (ext == 'bin') {
-      return {
-        format: 'bin',
-        addr: 0,
-        file: await LocalFile.from(path),
-      };
-    } else if (ext == 'lpk') {
+    if (ext == 'lpk') {
       return {
         format: 'lpk',
         file: await LpkFile.from(path),
       };
     } else {
-      throw new Error(`Unsupported file type: ${ext}`);
+      return {
+        format: 'bin',
+        addr: 0,
+        file: await LocalFile.from(path),
+      };
     }
   });
 }
