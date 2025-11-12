@@ -52,15 +52,22 @@ export function useFlashProgress(images: Ref<IFlashImage[]>, status: Ref<FlashSt
       return 0;
     }
 
+    const { index } = current.value;
     if (hexImage.value) {
       const { file } = hexImage.value;
-      const wrote = sum(file.sections.slice(0, current.value.index), (section) => section.size);
-      const writing = file.sections[current.value.index].size * current.value.progress;
+      if (index >= file.sections.length) {
+        return 0;
+      }
+      const wrote = sum(file.sections.slice(0, index), (section) => section.size);
+      const writing = file.sections[index].size * current.value.progress;
       return (wrote + writing) / file.size;
     } else {
+      if (index >= partitions.value.length) {
+        return 0;
+      }
       const total = sum(partitions.value, (part) => part.file.size);
-      const wrote = sum(partitions.value.slice(0, current.value.index), (part) => part.file.size);
-      const writing = partitions.value[current.value.index].file.size * current.value.progress;
+      const wrote = sum(partitions.value.slice(0, index), (part) => part.file.size);
+      const writing = partitions.value[index].file.size * current.value.progress;
       return (wrote + writing) / total;
     }
   });
