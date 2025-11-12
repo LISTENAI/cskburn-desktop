@@ -118,7 +118,7 @@ import { List16Regular } from '@vicons/fluent';
 import { throttle } from 'radash';
 
 import type { IFlashImage } from '@/utils/images';
-import { cskburn, type ICSKBurnResult } from '@/utils/cskburn';
+import { cskburn, CSKBurnTerminatedError, CSKBurnUnnormalExitError } from '@/utils/cskburn';
 import { cleanUpTmpFiles } from '@/utils/file';
 
 import { busyOn } from '@/composables/busyOn';
@@ -172,11 +172,8 @@ async function fetchInfo(): Promise<void> {
   flashInfo.value = null;
   output.value.splice(0);
 
-  let result: ICSKBurnResult | undefined;
-  let error: unknown;
-
   try {
-    result = await busyOn(cskburn(selectedPort.value!, BAUDRATE, selectedChip.value!, [], {
+    await busyOn(cskburn(selectedPort.value!, BAUDRATE, selectedChip.value!, [], {
       onOutput(line) {
         output.value.push(line);
       },
@@ -187,22 +184,22 @@ async function fetchInfo(): Promise<void> {
         flashInfo.value = { id, size };
       },
     }), busyForInfo);
+
+    output.value.push('[获取信息成功]');
   } catch (e) {
     console.error(e);
-    error = e;
-  }
-
-  if (error) {
     message.error('获取信息失败');
-    output.value.push(`[获取信息失败: 发生异常 ${error}]`);
-  } else if (result?.signal != null) {
-    message.error('获取信息失败');
-    output.value.push(`[获取信息失败: 终止信号 ${result.signal}]`);
-  } else if (result?.code != null && result.code != 0) {
-    message.error('获取信息失败');
-    output.value.push(`[获取信息失败: 退出码 ${result.code}]`);
-  } else {
-    output.value.push('[获取信息成功]');
+    if (e instanceof CSKBurnTerminatedError) {
+      output.value.push(`[获取信息失败: 终止信号 ${e.signal}]`);
+    } else if (e instanceof CSKBurnUnnormalExitError) {
+      if (e.message) {
+        output.value.push(`[获取信息失败: ${e.message}]`);
+      } else {
+        output.value.push(`[获取信息失败: 退出码 ${e.code}]`);
+      }
+    } else {
+      output.value.push(`[获取信息失败: 发生异常 ${e}]`);
+    }
   }
 }
 
@@ -282,11 +279,8 @@ async function startFlash(): Promise<void> {
   output.value.splice(0);
   status.value = FlashStatus.CONNECTING;
 
-  let result: ICSKBurnResult | undefined;
-  let error: unknown;
-
   try {
-    result = await cskburn(selectedPort.value!, BAUDRATE, selectedChip.value!, args, {
+    await cskburn(selectedPort.value!, BAUDRATE, selectedChip.value!, args, {
       signal: aborter.signal,
       onOutput(line) {
         output.value.push(line);
@@ -308,33 +302,29 @@ async function startFlash(): Promise<void> {
       onProgress(index, current) {
         progress.current = { index, progress: current };
       },
-      onError(error) {
-        failure.value = error;
-      },
     });
-  } catch (e) {
-    console.error(e);
-    error = e;
-  }
 
-  // @ts-ignore
-  const stoppedManually = status.value == FlashStatus.STOPPED;
-
-  if (error) {
-    status.value = FlashStatus.ERROR;
-    output.value.push(`[烧录失败: 发生异常 ${error}]`);
-  } else if (stoppedManually) {
-    // status 已经被设置为 STOPPED，这里不需要再次设置
-    output.value.push('[烧录停止]');
-  } else if (result?.signal != null) {
-    status.value = FlashStatus.ERROR;
-    output.value.push(`[烧录失败: 终止信号 ${result.signal}]`);
-  } else if (result?.code != null && result.code != 0) {
-    status.value = FlashStatus.ERROR;
-    output.value.push(`[烧录失败: 退出码 ${result.code}]`);
-  } else {
     status.value = FlashStatus.SUCCESS;
     output.value.push('[烧录成功]');
+  } catch (e) {
+    console.error(e);
+    if (e instanceof CSKBurnTerminatedError) {
+      // @ts-ignore: changed elsewhere
+      const stoppedManually = status.value == FlashStatus.STOPPED;
+      if (stoppedManually) {
+        output.value.push('[烧录停止]');
+      } else {
+        status.value = FlashStatus.ERROR;
+        output.value.push(`[烧录失败: 终止信号 ${e.signal}]`);
+      }
+    } else if (e instanceof CSKBurnUnnormalExitError) {
+      status.value = FlashStatus.ERROR;
+      failure.value = e.message;
+      output.value.push(`[烧录失败: 退出码 ${e.code}]`);
+    } else {
+      status.value = FlashStatus.ERROR;
+      output.value.push(`[烧录失败: 发生异常 ${e}]`);
+    }
   }
 }
 

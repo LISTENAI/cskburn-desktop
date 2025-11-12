@@ -15,13 +15,26 @@ type ICSKBurnEventHandlers = Partial<{
   onVerified: (index: number, md5: string) => void;
   onResetting: () => void;
   onFinished: () => void;
-  onError: (error: string) => void;
 }>;
 
 export interface ICSKBurnResult {
   code: number | null;
   signal: number | null;
   output: string;
+}
+
+export class CSKBurnTerminatedError extends Error {
+  constructor(readonly signal: number) {
+    super();
+    this.name = 'CSKBurnTerminatedError';
+  }
+}
+
+export class CSKBurnUnnormalExitError extends Error {
+  constructor(message: string | undefined, readonly code: number) {
+    super(message);
+    this.name = 'CSKBurnUnnormalExitError';
+  }
 }
 
 export async function cskburn(
@@ -48,6 +61,7 @@ export async function cskburn(
     const outputs: string[] = [];
 
     let currentIndex = 0;
+    let error: string | undefined;
 
     function handleOutput(output: string) {
       opts?.onOutput?.(output);
@@ -76,7 +90,7 @@ export async function cskburn(
       } else if (output == 'Finished') {
         opts?.onFinished?.();
       } else if ((match = output.match(/^ERROR: (.+)$/))) {
-        opts?.onError?.(match[1]);
+        error = match[1];
       }
     }
 
@@ -94,7 +108,13 @@ export async function cskburn(
 
     command.once('close', async ({ code, signal }) => {
       await queue.onIdle();
-      resolve({ code, signal, output: outputs.join('') })
+      if (signal != null) {
+        reject(new CSKBurnTerminatedError(signal));
+      } else if (code !== 0) {
+        reject(new CSKBurnUnnormalExitError(error, code ?? -1));
+      } else {
+        resolve({ code, signal, output: outputs.join('') })
+      }
     });
 
     command.once('error', (data) => {
