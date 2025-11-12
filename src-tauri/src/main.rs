@@ -1,6 +1,8 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod adb;
+mod cmds_adb;
 mod cmds_hex;
 mod cmds_lpk;
 mod cmds_serialport;
@@ -32,6 +34,9 @@ fn main() {
             cmds_serialport::list_ports,
             cmds_serialport::watch_ports,
             cmds_serialport::unwatch_ports,
+            cmds_adb::adb_list_devices,
+            cmds_adb::adb_watch_devices,
+            cmds_adb::adb_unwatch_devices,
             cmds_string::decode,
         ])
         .run(tauri::generate_context!())

@@ -12,8 +12,8 @@
         <n-flex align="center" size="large">
           <n-flex align="center">
             <div>端口:</div>
-            <port-selector v-model:port="selectedPort" :disabled="busyForInfo || busyForFlash"
-              :style="{ width: '300px' }" />
+            <port-selector v-model:selected="selectedPort" :disabled="busyForInfo || busyForFlash"
+              :style="{ width: '400px' }" />
           </n-flex>
           <n-flex align="center">
             <div>芯片:</div>
@@ -145,7 +145,7 @@ import { useLogWriter } from '@/composables/logWriter';
 
 import AppSettings from '@/components/sections/AppSettings.vue';
 import AutoUpdater from '@/components/sections/AutoUpdater.vue';
-import PortSelector from '@/components/sections/PortSelector.vue';
+import PortSelector, { type IPortSelection } from '@/components/sections/PortSelector.vue';
 import PartitionView from '@/components/sections/PartitionView.vue';
 import LogView from '@/components/sections/LogView.vue';
 
@@ -158,7 +158,7 @@ const supportedChips: SelectOption[] = MODELS.map((model) => ({
   label: model.brandName,
 }));
 
-const selectedPort = ref<string | null>(null);
+const selectedPort = ref<IPortSelection | null>(null);
 const selectedChip = ref<string | null>(null);
 const images = ref<IFlashImage[]>([]);
 
