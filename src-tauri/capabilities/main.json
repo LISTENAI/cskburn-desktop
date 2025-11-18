@@ -57,6 +57,7 @@
     },
     "os:allow-os-type",
     "process:allow-restart",
+    "store:default",
     "updater:default"
   ]
 }

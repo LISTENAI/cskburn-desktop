@@ -4,6 +4,7 @@
     height: '100vh',
     padding: '16px'
   }">
+    <app-settings v-model:show="settingsShown" />
     <auto-updater />
 
     <n-spin :show="busyForInfo" :style="{ width: 'fit-content' }">
@@ -69,6 +70,19 @@
       <n-flex align="center" :wrap="false" :style="{ flex: '0 0 auto' }">
         <n-tooltip>
           <template #trigger>
+            <n-button quaternary type="default" :focusable="false" @click="() => settingsShown = true">
+              <template #icon>
+                <n-icon>
+                  <Settings16Regular />
+                </n-icon>
+              </template>
+            </n-button>
+          </template>
+          设置
+        </n-tooltip>
+
+        <n-tooltip>
+          <template #trigger>
             <n-button quaternary :type="outputShown ? 'primary' : 'default'" :focusable="false"
               @click="() => outputShown = !outputShown">
               <template #icon>
@@ -114,7 +128,7 @@ import {
 } from 'naive-ui';
 import { getCurrentWindow, ProgressBarStatus, UserAttentionType } from '@tauri-apps/api/window';
 import { confirm } from '@tauri-apps/plugin-dialog';
-import { List16Regular } from '@vicons/fluent';
+import { List16Regular, Settings16Regular } from '@vicons/fluent';
 import { throttle } from 'radash';
 
 import type { IFlashImage } from '@/utils/images';
@@ -126,6 +140,7 @@ import { FlashStatus, useFlashProgress } from '@/composables/progress';
 import { useHexImage, usePartitions } from '@/composables/partitions';
 import { useListen } from '@/composables/tauri/useListen';
 
+import AppSettings from '@/components/sections/AppSettings.vue';
 import AutoUpdater from '@/components/sections/AutoUpdater.vue';
 import PortSelector from '@/components/sections/PortSelector.vue';
 import PartitionView from '@/components/sections/PartitionView.vue';
@@ -383,6 +398,8 @@ useListen(() => getCurrentWindow().onCloseRequested(async (event) => {
 
   await cleanUpTmpFiles();
 }));
+
+const settingsShown = ref(false);
 </script>
 
 <style lang="scss" module>
