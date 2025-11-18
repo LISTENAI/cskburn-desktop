@@ -13,6 +13,31 @@ struct HexState {
     size: u32,
 }
 
+impl HexState {
+    fn push_section(&mut self, sections: &mut Vec<HexSection>) {
+        if self.size == 0 {
+            return;
+        }
+
+        sections.push(HexSection {
+            address: self.address,
+            size: self.size,
+        });
+
+        self.size = 0;
+    }
+
+    fn switch_extended(&mut self, sections: &mut Vec<HexSection>, next_extend: u32) {
+        if self.address + self.size == next_extend {
+            self.extended = next_extend;
+        } else {
+            self.push_section(sections);
+            self.extended = next_extend;
+            self.address = next_extend;
+        }
+    }
+}
+
 #[tauri::command]
 pub fn read_hex(path: String) -> crate::Result<Vec<HexSection>> {
     let content = read_to_string(path).map_err(|e| crate::Error::Io(e))?;
@@ -30,56 +55,19 @@ pub fn read_hex(path: String) -> crate::Result<Vec<HexSection>> {
             Ok(Record::Data { offset, value }) => {
                 let address = state.extended + offset as u32;
                 if state.address + state.size != address {
-                    if state.size > 0 {
-                        sections.push(HexSection {
-                            address: state.address,
-                            size: state.size,
-                        });
-                    }
+                    state.push_section(&mut sections);
                     state.address = address;
-                    state.size = 0;
                 }
                 state.size += value.len() as u32;
             }
             Ok(Record::EndOfFile) => {
-                if state.size > 0 {
-                    sections.push(HexSection {
-                        address: state.address,
-                        size: state.size,
-                    });
-                }
+                state.push_section(&mut sections);
             }
             Ok(Record::ExtendedSegmentAddress(segment)) => {
-                let next_extend = (segment as u32) << 4;
-                if state.address + state.size == next_extend {
-                    state.extended = next_extend;
-                } else {
-                    if state.size > 0 {
-                        sections.push(HexSection {
-                            address: state.address,
-                            size: state.size,
-                        });
-                    }
-                    state.extended = next_extend;
-                    state.address = next_extend;
-                    state.size = 0;
-                }
+                state.switch_extended(&mut sections, (segment as u32) << 4);
             }
             Ok(Record::ExtendedLinearAddress(segment)) => {
-                let next_extend = (segment as u32) << 16;
-                if state.address + state.size == next_extend {
-                    state.extended = next_extend;
-                } else {
-                    if state.size > 0 {
-                        sections.push(HexSection {
-                            address: state.address,
-                            size: state.size,
-                        });
-                    }
-                    state.extended = next_extend;
-                    state.address = next_extend;
-                    state.size = 0;
-                }
+                state.switch_extended(&mut sections, (segment as u32) << 16);
             }
             _ => {}
         }
