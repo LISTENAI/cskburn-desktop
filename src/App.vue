@@ -139,6 +139,8 @@ import { busyOn } from '@/composables/busyOn';
 import { FlashStatus, useFlashProgress } from '@/composables/progress';
 import { useHexImage, usePartitions } from '@/composables/partitions';
 import { useListen } from '@/composables/tauri/useListen';
+import { useAppName, useAppVersion } from '@/composables/tauri/app';
+import { useLogWriter } from '@/composables/logWriter';
 
 import AppSettings from '@/components/sections/AppSettings.vue';
 import AutoUpdater from '@/components/sections/AutoUpdater.vue';
@@ -179,6 +181,8 @@ const readyToFlash = computed(() =>
   selectedChip.value != null &&
   images.value.length > 0 &&
   !hasError.value);
+
+const { logFileName, appendLog } = useLogWriter();
 
 const message = useMessage();
 
@@ -321,6 +325,8 @@ async function startFlash(): Promise<void> {
 
     status.value = FlashStatus.SUCCESS;
     output.value.push('[烧录成功]');
+
+    await appendLog(chipId.value ?? 'UNKNOWN', 'SUCCESS');
   } catch (e) {
     console.error(e);
     if (e instanceof CSKBurnTerminatedError) {
@@ -340,6 +346,8 @@ async function startFlash(): Promise<void> {
       status.value = FlashStatus.ERROR;
       output.value.push(`[烧录失败: 发生异常 ${e}]`);
     }
+
+    await appendLog(chipId.value ?? 'UNKNOWN', 'FAILURE');
   }
 }
 
@@ -400,6 +408,27 @@ useListen(() => getCurrentWindow().onCloseRequested(async (event) => {
 }));
 
 const settingsShown = ref(false);
+
+const appName = useAppName();
+const appVersion = useAppVersion();
+
+const windowTitle = computed(() => {
+  if (!appName.value || !appVersion.value) {
+    return undefined;
+  }
+
+  if (logFileName.value) {
+    return `${appName.value} - v${appVersion.value} (${logFileName.value})`;
+  } else {
+    return `${appName.value} - v${appVersion.value}`;
+  }
+});
+
+watch(windowTitle, async (title) => {
+  if (title) {
+    await getCurrentWindow().setTitle(title);
+  }
+});
 </script>
 
 <style lang="scss" module>

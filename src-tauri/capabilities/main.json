@@ -9,6 +9,7 @@
     "core:app:default",
     "core:event:default",
     "core:path:default",
+    "core:resources:allow-close",
     "core:window:allow-destroy",
     "core:window:allow-request-user-attention",
     "core:window:allow-set-progress-bar",
@@ -17,6 +18,14 @@
     "dialog:allow-open",
     "fs:default",
     "fs:allow-stat",
+    {
+      "identifier":"fs:allow-open",
+      "allow": ["**/*"]
+    },
+    {
+      "identifier":"fs:allow-remove",
+      "allow": ["**/*"]
+    },
     {
       "identifier": "fs:allow-appcache-write",
       "allow": [

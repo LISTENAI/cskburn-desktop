@@ -10,7 +10,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, onMounted } from 'vue';
+import { computed } from 'vue';
 import {
   NConfigProvider,
   NDialogProvider,
@@ -19,17 +19,9 @@ import {
   darkTheme,
   useOsTheme,
 } from 'naive-ui';
-import { getName, getVersion } from '@tauri-apps/api/app';
-import { getCurrentWindow } from '@tauri-apps/api/window';
 
 import App from '@/App.vue';
 
 const osTheme = useOsTheme();
 const darkMode = computed(() => osTheme.value == 'dark');
-
-onMounted(async () => {
-  const name = await getName();
-  const version = await getVersion();
-  getCurrentWindow().setTitle(`${name} - v${version}`);
-});
 </script>
