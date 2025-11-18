@@ -1,6 +1,12 @@
 use ihex::{Reader, Record};
 use std::fs::read_to_string;
 
+const FLASH_ALIGN: u32 = 4 * 1024;
+
+fn align_down(addr: u32, align: u32) -> u32 {
+    addr - (addr % align)
+}
+
 #[derive(serde::Serialize)]
 pub struct HexSection {
     address: u32,
@@ -17,6 +23,14 @@ impl HexState {
     fn push_section(&mut self, sections: &mut Vec<HexSection>) {
         if self.size == 0 {
             return;
+        }
+
+        if let Some(last) = sections.last_mut() {
+            if align_down(self.address, FLASH_ALIGN) <= last.address + last.size {
+                last.size = (self.address + self.size) - last.address;
+                self.size = 0;
+                return;
+            }
         }
 
         sections.push(HexSection {
