@@ -38,3 +38,11 @@ export async function watchDevices(cb: (devices: IDevice[]) => void): Promise<Un
     void invoke('adb_unwatch_devices', { rid });
   };
 }
+
+export async function killServer(): Promise<void> {
+  return await invoke('adb_kill_server');
+}
+
+export async function executeShell(identifier: string, commands: string[]): Promise<string> {
+  return await invoke('adb_shell', { identifier, commands });
+}
