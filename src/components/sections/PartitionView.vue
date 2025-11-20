@@ -289,10 +289,6 @@ const partitions = computed<IPartitionRecord[]>(() => images.value.flatMap((imag
 async function handleFilePick() {
   const selected = await open({
     multiple: true,
-    filters: [{
-      name: 'CSK6 固件文件',
-      extensions: ['bin', 'hex', 'lpk']
-    }],
   });
 
   if (selected && selected.length > 0) {
