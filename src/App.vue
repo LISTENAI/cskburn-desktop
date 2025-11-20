@@ -15,7 +15,12 @@
             <port-selector v-model:selected="selectedPort" :disabled="busyForInfo || busyForFlash"
               :style="{ width: '400px' }" />
           </n-flex>
-          <n-flex v-if="selectedPort?.type == 'serial'" align="center">
+          <template v-if="selectedPort?.type == 'adb' && selectedPort.state == 'DEVICE'">
+            <n-button secondary :disabled="busyForInfo || busyForFlash" @click="rebootToRecovery">
+              进入 Recovery 模式
+            </n-button>
+          </template>
+          <n-flex v-else-if="selectedPort?.type == 'serial'" align="center">
             <div>芯片:</div>
             <n-select v-model:value="selectedChip" placeholder="请选择芯片" :options="supportedChips"
               :disabled="busyForInfo || busyForFlash" :style="{ width: '8em' }" />
@@ -134,6 +139,7 @@ import { MODELS, normalizeModelName } from '@/utils/model';
 import type { IFlashImage } from '@/utils/images';
 import { cskburn, CSKBurnTerminatedError, CSKBurnUnnormalExitError } from '@/utils/cskburn';
 import { cleanUpTmpFiles } from '@/utils/file';
+import { executeShell } from '@/utils/adb';
 
 import { busyOn } from '@/composables/busyOn';
 import { FlashStatus, useFlashProgress } from '@/composables/progress';
@@ -231,6 +237,16 @@ async function fetchInfoFromSerial(path: string, chip: string): Promise<void> {
       output.value.push(`[获取信息失败: 发生异常 ${e}]`);
     }
   }
+}
+
+async function rebootToRecovery(): Promise<void> {
+  if (selectedPort.value?.type != 'adb') {
+    return;
+  }
+
+  try {
+    await executeShell(selectedPort.value.identifier, ['recovery']);
+  } catch { }
 }
 
 const hexImage = useHexImage(images);

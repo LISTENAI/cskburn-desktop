@@ -1,6 +1,9 @@
 use std::sync::Mutex;
 
-use tauri::{ipc::Channel, Manager, Resource, ResourceId, Runtime, Webview};
+use adb_client::ADBDeviceExt;
+use tauri::{
+    async_runtime::spawn_blocking, ipc::Channel, Manager, Resource, ResourceId, Runtime, Webview,
+};
 
 use crate::{
     adb::ADBDevice,
@@ -100,4 +103,24 @@ pub async fn adb_unwatch_devices<R: Runtime>(webview: Webview<R>, rid: ResourceI
     WatcherResource::with_lock(&watcher, |watcher| {
         watcher.watcher.unwatch();
     });
+}
+
+#[tauri::command]
+pub async fn adb_shell(identifier: String, commands: Vec<String>) -> crate::Result<String> {
+    spawn_blocking(move || {
+        let mut device = ADBDevice::find(identifier.as_str())
+            .ok_or(crate::Error::Rusb(rusb::Error::NoDevice))?
+            .adb()?;
+
+        let mut output = Vec::new();
+
+        device.shell_command(
+            &commands.iter().map(|s| s.as_str()).collect::<Vec<&str>>(),
+            &mut output,
+        )?;
+
+        Ok(String::from_utf8_lossy(&output).to_string())
+    })
+    .await
+    .map_err(|e| crate::Error::from(e))?
 }

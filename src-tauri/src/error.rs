@@ -8,6 +8,8 @@ pub enum Error {
     Adb(#[from] adb_client::RustADBError),
     #[error(transparent)]
     Rusb(#[from] rusb::Error),
+    #[error(transparent)]
+    Tauri(#[from] tauri::Error),
     #[error("Invalid LPK: {0}")]
     InvalidLpk(String),
 }

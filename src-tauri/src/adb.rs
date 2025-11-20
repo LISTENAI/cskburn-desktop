@@ -1,4 +1,6 @@
-use adb_client::{is_adb_device, ADBUSBDevice, RustADBError, USBTransport};
+use std::{thread::sleep, time::Duration};
+
+use adb_client::{is_adb_device, ADBServer, ADBUSBDevice, RustADBError, USBTransport};
 use rusb::GlobalContext;
 
 pub struct ADBDevice {
@@ -28,9 +30,22 @@ impl ADBDevice {
         &self.identifier
     }
 
-    pub fn adb(&self) -> Result<ADBUSBDevice, RustADBError> {
+    fn adb_once(&self) -> Result<ADBUSBDevice, RustADBError> {
         let transport = USBTransport::new_from_device(self.device.clone());
         ADBUSBDevice::new_from_transport(transport, None)
+    }
+
+    pub fn adb(&self) -> Result<ADBUSBDevice, RustADBError> {
+        match self.adb_once() {
+            Ok(adb) => Ok(adb),
+            Err(RustADBError::UsbError(rusb::Error::Access)) => {
+                let mut server = ADBServer::default();
+                server.kill()?;
+                sleep(Duration::from_millis(500));
+                self.adb_once()
+            }
+            Err(e) => Err(e),
+        }
     }
 }
 
