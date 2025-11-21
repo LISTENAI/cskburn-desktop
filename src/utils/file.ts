@@ -113,13 +113,14 @@ export class HexFile extends BaseFile {
 }
 
 export class LpkFile extends BaseFile {
+  readonly chip!: string;
   readonly partitions!: IPartition[];
 
   static async from(path: string): Promise<LpkFile> {
     const name = await basename(path);
     const { size, mtime } = await stat(path);
-    const partitions = await readLpk(path);
-    return plainToInstance(LpkFile, { path, name, size, mtime: mtime!, partitions });
+    const { chip, partitions } = await readLpk(path);
+    return plainToInstance(LpkFile, { path, name, size, mtime: mtime!, chip, partitions });
   }
 
   async free(): Promise<void> {

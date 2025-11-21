@@ -7,6 +7,12 @@ use zip::read::ZipArchive;
 use crate::file::TmpFile;
 
 #[derive(serde::Serialize)]
+pub struct LpkInfo {
+    chip: String,
+    partitions: Vec<Partition>,
+}
+
+#[derive(serde::Serialize)]
 pub struct Partition {
     addr: u32,
     file: TmpFile,
@@ -42,7 +48,7 @@ pub fn read_lpk<R: tauri::Runtime>(
     _app: tauri::AppHandle<R>,
     resolver: tauri::State<'_, tauri::path::PathResolver<R>>,
     path: String,
-) -> crate::Result<Vec<Partition>> {
+) -> crate::Result<LpkInfo> {
     let buffer = fs::read(path).map_err(|e| crate::Error::Io(e))?;
     let mut zip = ZipArchive::new(Cursor::new(buffer))
         .map_err(|_| crate::Error::InvalidLpk("Failed to read archive".to_string()))?;
@@ -58,11 +64,6 @@ pub fn read_lpk<R: tauri::Runtime>(
         serde_json::from_slice(&content)
             .map_err(|_| crate::Error::InvalidLpk("Failed to parse manifest.json".to_string()))?
     };
-
-    // TODO: check chip
-    if !manifest.chip.to_lowercase().starts_with("csk6") {
-        return Err(crate::Error::InvalidLpk("Chip unsupported".to_string()));
-    }
 
     if manifest.images.is_empty() {
         return Err(crate::Error::InvalidLpk("No images found".to_string()));
@@ -118,5 +119,8 @@ pub fn read_lpk<R: tauri::Runtime>(
         ScopeGuard::into_inner(guard);
     }
 
-    Ok(partitions)
+    Ok(LpkInfo {
+        chip: manifest.chip,
+        partitions,
+    })
 }

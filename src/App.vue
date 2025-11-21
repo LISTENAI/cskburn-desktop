@@ -131,6 +131,7 @@ import { confirm } from '@tauri-apps/plugin-dialog';
 import { List16Regular, Settings16Regular } from '@vicons/fluent';
 import { throttle } from 'radash';
 
+import { MODELS, normalizeModelName } from '@/utils/model';
 import type { IFlashImage } from '@/utils/images';
 import { cskburn, CSKBurnTerminatedError, CSKBurnUnnormalExitError } from '@/utils/cskburn';
 import { cleanUpTmpFiles } from '@/utils/file';
@@ -152,10 +153,10 @@ import SelectableText from '@/components/common/SelectableText.vue';
 
 const BAUDRATE = 1_500_000;
 
-const supportedChips: SelectOption[] = [
-  { value: 'venus', label: 'CSK6' },
-  { value: 'arcs', label: 'LS26' },
-];
+const supportedChips: SelectOption[] = MODELS.map((model) => ({
+  value: model.name,
+  label: model.brandName,
+}));
 
 const selectedPort = ref<string | null>(null);
 const selectedChip = ref<string | null>(null);
@@ -229,6 +230,17 @@ watch(images, () => {
   progress.current = null;
   status.value = null;
   failure.value = null;
+});
+
+const lpkChip = computed(() => {
+  const lpk = images.value.find((img) => img.format == 'lpk');
+  return lpk ? normalizeModelName(lpk.file.chip) : null;
+});
+
+watch(lpkChip, (chip) => {
+  if (chip) {
+    selectedChip.value = chip;
+  }
 });
 
 const errors = computed(() => {
