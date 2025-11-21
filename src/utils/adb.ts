@@ -42,3 +42,76 @@ export async function watchDevices(cb: (devices: IDevice[]) => void): Promise<Un
 export async function executeShell(identifier: string, commands: string[]): Promise<string> {
   return await invoke('adb_shell', { identifier, commands });
 }
+
+export type ITransferEvent = {
+  type: 'PROGRESS';
+  data: { readSize: number; totalSize: number };
+} | {
+  type: 'COMPLETED';
+} | {
+  type: 'ERROR';
+  data: { message: string };
+};
+
+export class ADBTransferError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ADBTransferError';
+  }
+}
+
+export class ADBTransferCancelledError extends Error {
+  constructor() {
+    super('ADB transfer cancelled');
+    this.name = 'ADBTransferCancelledError';
+  }
+}
+
+export async function pushFile(
+  identifier: string,
+  local: string,
+  remote: string,
+  onProgress: (read: number, total: number) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  const { promise, resolve, reject } = Promise.withResolvers<void>();
+
+  const onEvent = new Channel<ITransferEvent>();
+  onEvent.onmessage = (event) => {
+    switch (event.type) {
+      case 'PROGRESS': {
+        const { readSize, totalSize } = event.data;
+        onProgress(readSize, totalSize);
+        break;
+      }
+      case 'COMPLETED': {
+        resolve();
+        break;
+      }
+      case 'ERROR': {
+        const { message } = event.data;
+        if (message == 'cancelled') {
+          reject(new ADBTransferCancelledError());
+        } else {
+          reject(new ADBTransferError(message));
+        }
+        break;
+      }
+    }
+  };
+
+  if (signal) {
+    signal.addEventListener('abort', () => {
+      void invoke('adb_push_cancel', { rid });
+    });
+  }
+
+  const rid = await invoke('adb_push', {
+    identifier,
+    local,
+    remote,
+    onEvent,
+  });
+
+  return promise;
+}

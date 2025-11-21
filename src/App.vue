@@ -139,7 +139,7 @@ import { MODELS, normalizeModelName } from '@/utils/model';
 import type { IFlashImage } from '@/utils/images';
 import { cskburn, CSKBurnTerminatedError, CSKBurnUnnormalExitError } from '@/utils/cskburn';
 import { cleanUpTmpFiles } from '@/utils/file';
-import { executeShell } from '@/utils/adb';
+import { ADBTransferCancelledError, executeShell, pushFile } from '@/utils/adb';
 
 import { busyOn } from '@/composables/busyOn';
 import { FlashStatus, useFlashProgress } from '@/composables/progress';
@@ -325,6 +325,8 @@ async function startFlash(): Promise<void> {
 
   if (selectedPort.value?.type == 'serial' && selectedChip.value != null) {
     await startFlashOnSerial(selectedPort.value.path, selectedChip.value, aborter.signal);
+  } else if (selectedPort.value?.type == 'adb') {
+    await startFlashOnAdb(selectedPort.value.identifier, aborter.signal);
   }
 }
 
@@ -388,6 +390,46 @@ async function startFlashOnSerial(path: string, chip: string, signal: AbortSigna
       output.value.push(`[烧录失败: 退出码 ${e.code}]`);
     } else {
       status.value = FlashStatus.ERROR;
+      output.value.push(`[烧录失败: 发生异常 ${e}]`);
+    }
+
+    await appendLog(chipId.value ?? 'UNKNOWN', 'FAILURE');
+  }
+}
+
+async function startFlashOnAdb(identifier: string, signal: AbortSignal): Promise<void> {
+  if (hexImage.value) {
+    throw new Error('ADB 模式下暂不支持 HEX 镜像');
+  }
+
+  progress.current = null;
+  output.value.splice(0);
+
+  try {
+    status.value = FlashStatus.FLASHING;
+
+    for (const [index, partition] of partitions.value.entries()) {
+      progress.current = { index, progress: 0 };
+      output.value.push(`adb -s ${identifier} push ${partition.file.path} /RAW/NAND/${partition.addr.toString(16)}`);
+      await pushFile(identifier, partition.file.path, `/RAW/NAND/${partition.addr.toString(16)}`, (read, total) => {
+        progress.current = { index, progress: read / total };
+        output.value.push(`写入进度: ${read}/${total}`);
+      }, signal);
+      progress.current = { index, progress: 1 };
+    }
+
+    status.value = FlashStatus.SUCCESS;
+    output.value.push('[烧录成功]');
+
+    await appendLog(chipId.value ?? 'UNKNOWN', 'SUCCESS');
+  } catch (e) {
+    console.error(e);
+
+    if (e instanceof ADBTransferCancelledError) {
+      output.value.push('[烧录停止]');
+    } else {
+      status.value = FlashStatus.ERROR;
+      failure.value = e instanceof Error ? e.message : String(e);
       output.value.push(`[烧录失败: 发生异常 ${e}]`);
     }
 
