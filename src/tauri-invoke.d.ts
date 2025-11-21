@@ -15,5 +15,6 @@ declare module '@tauri-apps/api/core' {
   function invoke(cmd: 'adb_unwatch_devices', args: { rid: number }): Promise<void>;
   function invoke(cmd: 'adb_kill_server'): Promise<void>;
   function invoke(cmd: 'adb_shell', args: { identifier: string; commands: string[] }): Promise<string>;
+  function invoke(cmd: 'adb_push', args: { identifier: string; local: string; remote: string }): Promise<void>;
   function invoke(cmd: 'decode', args: { data: ArrayLike<number> }): Promise<string>;
 }

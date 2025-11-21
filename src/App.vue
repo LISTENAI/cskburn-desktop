@@ -140,7 +140,7 @@ import { MODELS, normalizeModelName } from '@/utils/model';
 import type { IFlashImage } from '@/utils/images';
 import { cskburn, CSKBurnTerminatedError, CSKBurnUnnormalExitError } from '@/utils/cskburn';
 import { cleanUpTmpFiles } from '@/utils/file';
-import { executeShell, killServer } from '@/utils/adb';
+import { executeShell, killServer, pushFile } from '@/utils/adb';
 
 import { busyOn } from '@/composables/busyOn';
 import { FlashStatus, useFlashProgress } from '@/composables/progress';
@@ -311,10 +311,20 @@ const outputShown = ref(false);
 let aborter: AbortController | undefined;
 
 async function startFlash(): Promise<void> {
-  if (images.value.length == 0) {
+  if (selectedPort.value == null || selectedChip.value == null || images.value.length == 0) {
     return;
   }
 
+  aborter = new AbortController();
+
+  if (selectedPort.value.type == 'serial') {
+    await startSerialFlash(selectedPort.value.path, aborter.signal);
+  } else if (selectedPort.value.type == 'adb') {
+    await startAdbFlash(selectedPort.value.identifier, aborter.signal);
+  }
+}
+
+async function startSerialFlash(path: string, signal: AbortSignal): Promise<void> {
   const args = ['--verify-all'];
   if (hexImage.value) {
     args.push(hexImage.value.file.path);
@@ -324,15 +334,13 @@ async function startFlash(): Promise<void> {
     }
   }
 
-  aborter = new AbortController();
-
   progress.current = null;
   output.value.splice(0);
   status.value = FlashStatus.CONNECTING;
 
   try {
-    await cskburn(selectedPort.value!, BAUDRATE, selectedChip.value!, args, {
-      signal: aborter.signal,
+    await cskburn(path, BAUDRATE, selectedChip.value!, args, {
+      signal,
       onOutput(line) {
         output.value.push(line);
       },
@@ -379,6 +387,29 @@ async function startFlash(): Promise<void> {
       output.value.push(`[烧录失败: 发生异常 ${e}]`);
     }
 
+    await appendLog(chipId.value ?? 'UNKNOWN', 'FAILURE');
+  }
+}
+
+async function startAdbFlash(identifier: string, signal: AbortSignal): Promise<void> {
+  if (hexImage.value) {
+    throw new Error('ADB 模式下暂不支持 HEX 镜像');
+  }
+
+  progress.current = null;
+  output.value.splice(0);
+  status.value = FlashStatus.FLASHING;
+
+  try {
+    for (const [index, partition] of partitions.value.entries()) {
+      progress.current = { index, progress: 0 };
+      await pushFile(identifier, partition.file.path, `/RAW/NAND/${partition.addr.toString(16)}`);
+      progress.current = { index, progress: 1 };
+    }
+  } catch (e) {
+    console.error(e);
+    status.value = FlashStatus.ERROR;
+    output.value.push(`[烧录失败: 发生异常 ${e}]`);
     await appendLog(chipId.value ?? 'UNKNOWN', 'FAILURE');
   }
 }

@@ -1,4 +1,4 @@
-use std::sync::Mutex;
+use std::{fs::File, io::Read, path::Path, sync::Mutex};
 
 use adb_client::{ADBDeviceExt, ADBServer};
 use tauri::{
@@ -21,6 +21,33 @@ pub struct Device {
 pub enum DeviceState {
     Device,
     Recovery,
+}
+
+struct ProgressReader<R: Read, F: FnMut(usize, usize)> {
+    inner: R,
+    total_size: usize,
+    read_size: usize,
+    on_progress: F,
+}
+
+impl<R: Read, F: FnMut(usize, usize)> ProgressReader<R, F> {
+    fn new(inner: R, total_size: usize, on_progress: F) -> Self {
+        Self {
+            inner,
+            total_size,
+            read_size: 0,
+            on_progress,
+        }
+    }
+}
+
+impl<R: Read, F: FnMut(usize, usize)> Read for ProgressReader<R, F> {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        let bytes_read = self.inner.read(buf)?;
+        self.read_size += bytes_read;
+        (self.on_progress)(self.read_size, self.total_size);
+        Ok(bytes_read)
+    }
 }
 
 #[tauri::command]
@@ -134,4 +161,27 @@ pub async fn adb_shell(identifier: String, commands: Vec<String>) -> crate::Resu
     })
     .await
     .map_err(|e| crate::Error::from(e))?
+}
+
+#[tauri::command]
+pub fn adb_push(identifier: &str, local: &str, remote: &str) -> crate::Result<()> {
+    let mut device = ADBDevice::find(identifier)
+        .ok_or(crate::Error::Rusb(rusb::Error::NoDevice))?
+        .adb()?;
+
+    let file = File::open(Path::new(local))?;
+    let total_size = file.metadata()?.len() as usize;
+
+    let mut reader = ProgressReader::new(file, total_size, |read_size, total_size| {
+        println!("Pushed {}/{} bytes", read_size, total_size);
+    });
+
+    println!(
+        "Pushing file to device {} {:?}: {} -> {}",
+        identifier, device, local, remote
+    );
+
+    device.push(&mut reader, &remote)?;
+
+    Ok(())
 }

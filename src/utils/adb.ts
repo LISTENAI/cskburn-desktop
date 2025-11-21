@@ -46,3 +46,7 @@ export async function killServer(): Promise<void> {
 export async function executeShell(identifier: string, commands: string[]): Promise<string> {
   return await invoke('adb_shell', { identifier, commands });
 }
+
+export async function pushFile(identifier: string, local: string, remote: string): Promise<void> {
+  return await invoke('adb_push', { identifier, local, remote });
+}
