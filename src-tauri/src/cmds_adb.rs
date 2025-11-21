@@ -1,4 +1,4 @@
-use std::sync::Mutex;
+use std::{fs::File, sync::Mutex};
 
 use adb_client::{ADBDeviceExt, ADBServer};
 use tauri::{
@@ -144,6 +144,20 @@ pub async fn adb_shell(identifier: String, commands: Vec<String>) -> crate::Resu
         )?;
 
         Ok(String::from_utf8_lossy(&output).to_string())
+    })
+    .await
+    .map_err(|e| crate::Error::from(e))?
+}
+
+#[tauri::command]
+pub async fn adb_push(identifier: String, local: String, remote: String) -> crate::Result<()> {
+    spawn_blocking(move || {
+        let mut device = ADBServer::default().get_device_by_name(identifier.as_str())?;
+
+        let file = File::open(local)?;
+        device.push(file, remote)?;
+
+        Ok(())
     })
     .await
     .map_err(|e| crate::Error::from(e))?

@@ -50,3 +50,15 @@ export async function rebootToRecovery(identifier: string): Promise<void> {
     // 忽略，因为设备必然会断开连接
   }
 }
+
+export async function pushFile(
+  identifier: string,
+  local: string,
+  remote: string,
+): Promise<void> {
+  await invoke('adb_push', {
+    identifier,
+    local,
+    remote,
+  });
+}

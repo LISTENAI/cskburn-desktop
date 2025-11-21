@@ -15,8 +15,8 @@ export enum FlashStatus {
 }
 
 export interface IFlashProgress {
-  current: { index: number, progress: number } | null;
-  perPartition: ({ progress: number, status: FlashStatus | null } | null)[] | null;
+  current: { index: number, progress: number | null } | null;
+  perPartition: ({ progress: number | null, status: FlashStatus | null } | null)[] | null;
   progress: number;
   status: FlashStatus | null;
 }
@@ -59,7 +59,7 @@ export function useFlashProgress(images: Ref<IFlashImage[]>, status: Ref<FlashSt
         return 0;
       }
       const wrote = sum(file.sections.slice(0, index), (section) => section.size);
-      const writing = file.sections[index].size * current.value.progress;
+      const writing = file.sections[index].size * (current.value.progress ?? 0);
       return (wrote + writing) / file.size;
     } else {
       if (index >= partitions.value.length) {
@@ -67,7 +67,7 @@ export function useFlashProgress(images: Ref<IFlashImage[]>, status: Ref<FlashSt
       }
       const total = sum(partitions.value, (part) => part.file.size);
       const wrote = sum(partitions.value.slice(0, index), (part) => part.file.size);
-      const writing = partitions.value[index].file.size * current.value.progress;
+      const writing = partitions.value[index].file.size * (current.value.progress ?? 0);
       return (wrote + writing) / total;
     }
   });

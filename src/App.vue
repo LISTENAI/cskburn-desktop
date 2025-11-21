@@ -141,7 +141,10 @@ import { List16Regular, Settings16Regular } from '@vicons/fluent';
 import { MODELS, normalizeModelName } from '@/utils/model';
 import type { IFlashImage } from '@/utils/images';
 import { cskburn, CSKBurnTerminatedError, CSKBurnUnnormalExitError } from '@/utils/cskburn';
-import { rebootToRecovery } from '@/utils/adb';
+import {
+  pushFile,
+  rebootToRecovery,
+} from '@/utils/adb';
 import { cleanUpTmpFiles } from '@/utils/file';
 
 import { busyOn } from '@/composables/busyOn';
@@ -193,6 +196,7 @@ const busyForFlash = computed(() =>
 const readyToFlash = computed(() =>
   selectedPort.value != null &&
   !(selectedPort.value.type == 'serial' && selectedChip.value == null) &&
+  !(selectedPort.value.type == 'adb' && selectedPort.value.state != 'RECOVERY') &&
   images.value.length > 0 &&
   !hasError.value);
 
@@ -354,6 +358,8 @@ async function startFlash(): Promise<void> {
 
   if (selectedPort.value?.type == 'serial' && selectedChip.value != null) {
     await startFlashOnSerial(selectedPort.value.path, selectedChip.value, aborter.signal);
+  } else if (selectedPort.value?.type == 'adb' && selectedPort.value.state == 'RECOVERY') {
+    await startFlashOnAdb(selectedPort.value.identifier, aborter.signal);
   }
 }
 
@@ -415,6 +421,51 @@ async function startFlashOnSerial(path: string, chip: string, signal: AbortSigna
       status.value = FlashStatus.ERROR;
       failure.value = e.message;
       output.value.push(`[烧录失败: 退出码 ${e.code}]`);
+    } else {
+      status.value = FlashStatus.ERROR;
+      output.value.push(`[烧录失败: 发生异常 ${e}]`);
+    }
+
+    await appendLog(chipId.value ?? 'UNKNOWN', 'FAILURE');
+  }
+}
+
+async function startFlashOnAdb(identifier: string, signal: AbortSignal): Promise<void> {
+  if (hexImage.value) {
+    message.error('ADB 模式暂不支持烧录 HEX 文件');
+    return;
+  }
+
+  progress.current = null;
+  output.value.splice(0);
+
+  output.value.push(`设备: ${identifier}`);
+
+  try {
+    for (const [index, { addr, file }] of partitions.value.entries()) {
+      output.value.push(`[正在烧录分区 #${index + 1}]`);
+
+      progress.current = { index, progress: null };
+      status.value = FlashStatus.FLASHING;
+
+      const pushPath = `/RAW/NAND/${addr.toString(16)}`;
+      output.value.push(`正在推送到设备路径: ${pushPath}`);
+      await pushFile(identifier, file.path, pushPath);
+
+      progress.current = { index, progress: 1 };
+    }
+
+    status.value = FlashStatus.SUCCESS;
+    output.value.push('[烧录成功]');
+
+    await appendLog(chipId.value ?? 'UNKNOWN', 'SUCCESS');
+  } catch (e) {
+    console.error(e);
+
+    if (e instanceof Error) {
+      status.value = FlashStatus.ERROR;
+      failure.value = e.message;
+      output.value.push(`[烧录失败: 发生异常 ${e}]`);
     } else {
       status.value = FlashStatus.ERROR;
       output.value.push(`[烧录失败: 发生异常 ${e}]`);

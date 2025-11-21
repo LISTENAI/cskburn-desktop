@@ -37,6 +37,7 @@ fn main() {
             cmds_adb::adb_watch_devices,
             cmds_adb::adb_unwatch_devices,
             cmds_adb::adb_shell,
+            cmds_adb::adb_push,
             cmds_string::decode,
         ])
         .run(tauri::generate_context!())
