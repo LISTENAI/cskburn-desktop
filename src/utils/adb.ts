@@ -1,4 +1,4 @@
-import { Command } from '@tauri-apps/plugin-shell';
+import { Child, Command } from '@tauri-apps/plugin-shell';
 
 type UnwatchFn = () => void;
 
@@ -65,4 +65,72 @@ export async function rebootToRecovery(identifier: string): Promise<void> {
   } catch {
     // 忽略，因为设备必然会断开连接
   }
+}
+
+type IADBTransferEventHandlers = Partial<{
+  onOutput: (output: string) => void;
+}>;
+
+export class ADBTransferTerminatedError extends Error {
+  constructor(readonly signal: number) {
+    super();
+    this.name = 'ADBTransferTerminatedError';
+  }
+}
+
+export class ADBTransferUnnormalExitError extends Error {
+  constructor(message: string | undefined, readonly code: number) {
+    super(message);
+    this.name = 'ADBTransferUnnormalExitError';
+  }
+}
+
+export function pushFile(
+  identifier: string,
+  local: string,
+  remote: string,
+  opts?: IADBTransferEventHandlers & { signal?: AbortSignal },
+): Promise<void> {
+  const { promise, resolve, reject } = Promise.withResolvers<void>();
+
+  const command = Command.create('adb', ['-s', identifier, 'push', local, remote]);
+
+  function handleOutput(output: string) {
+    opts?.onOutput?.(output);
+  }
+
+  function handleData(data: string) {
+    for (const line of data.split('\n')) {
+      handleOutput(line);
+    }
+  }
+
+  command.stdout.on('data', handleData);
+  command.stderr.on('data', handleData);
+
+  command.once('close', ({ code, signal }) => {
+    if (signal != null) {
+      reject(new ADBTransferTerminatedError(signal));
+    } else if (code !== 0) {
+      reject(new ADBTransferUnnormalExitError(`adb push exited with code ${code}`, code!));
+    } else {
+      resolve();
+    }
+  });
+
+  command.once('error', (err) => {
+    reject(err);
+  });
+
+  let child: Child | undefined;
+
+  command.spawn()
+    .then((c) => child = c)
+    .catch((err) => reject(err));
+
+  opts?.signal?.addEventListener('abort', () => {
+    child?.kill();
+  });
+
+  return promise;
 }

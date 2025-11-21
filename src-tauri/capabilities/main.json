@@ -66,6 +66,11 @@
           "name": "cskburn-cli/cskburn",
           "args": true,
           "sidecar": true
+        },
+        {
+          "name": "adb",
+          "cmd": "adb",
+          "args": true
         }
       ]
     },
