@@ -139,7 +139,7 @@ import { MODELS, normalizeModelName } from '@/utils/model';
 import type { IFlashImage } from '@/utils/images';
 import { cskburn, CSKBurnTerminatedError, CSKBurnUnnormalExitError } from '@/utils/cskburn';
 import { cleanUpTmpFiles } from '@/utils/file';
-import { ADBTransferCancelledError, executeShell, pushFile } from '@/utils/adb';
+import { ADBTransferCancelledError, executeShell, fetchChipId, fetchFlashSize, pushFile } from '@/utils/adb';
 
 import { busyOn } from '@/composables/busyOn';
 import { FlashStatus, useFlashProgress } from '@/composables/progress';
@@ -200,6 +200,8 @@ const message = useMessage();
 async function fetchInfo(): Promise<void> {
   if (selectedPort.value?.type == 'serial' && selectedChip.value != null) {
     await fetchInfoFromSerial(selectedPort.value.path, selectedChip.value);
+  } else if (selectedPort.value?.type == 'adb') {
+    await fetchInfoFromAdb(selectedPort.value.identifier);
   }
 }
 
@@ -236,6 +238,24 @@ async function fetchInfoFromSerial(path: string, chip: string): Promise<void> {
     } else {
       output.value.push(`[获取信息失败: 发生异常 ${e}]`);
     }
+  }
+}
+
+async function fetchInfoFromAdb(identifier: string): Promise<void> {
+  chipId.value = null;
+  flashInfo.value = null;
+  output.value.splice(0);
+
+  try {
+    await busyOn((async () => {
+      chipId.value = await fetchChipId(identifier);
+      const size = await fetchFlashSize(identifier);
+      flashInfo.value = size ? { id: 'UNKNOWN', size } : null;
+    })(), busyForInfo);
+  } catch (e) {
+    console.error(e);
+    message.error('获取信息失败');
+    output.value.push(`[获取信息失败: 发生异常 ${e}]`);
   }
 }
 

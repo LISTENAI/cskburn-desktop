@@ -5,8 +5,7 @@ version = 4
 [[package]]
 name = "adb_client"
 version = "2.1.18"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f415b469dd4e79fefa23f04148a1f6b4d227c0247fe9e2577ab4e44d71038e0"
+source = "git+https://github.com/LISTENAI/adb_client.git?branch=fix-shell-clse#89f56e6d4c4fd44c664ee8ec6e64b0d4549b6390"
 dependencies = [
  "base64 0.22.1",
  "bincode",

@@ -43,6 +43,18 @@ export async function executeShell(identifier: string, commands: string[]): Prom
   return await invoke('adb_shell', { identifier, commands });
 }
 
+export async function fetchChipId(identifier: string): Promise<string | null> {
+  const output = await executeShell(identifier, ['info', 'sn']);
+  const match = output.match(/serial num: ([0-9A-F]+)/i);
+  return match?.[1].toUpperCase() ?? null;
+}
+
+export async function fetchFlashSize(identifier: string): Promise<number | null> {
+  const output = await executeShell(identifier, ['info', 'flash']);
+  const match = output.match(/size: (\d+)MB/);
+  return match ? (parseInt(match[1], 10) * 1024 * 1024) : null;
+}
+
 export type ITransferEvent = {
   type: 'PROGRESS';
   data: { readSize: number; totalSize: number };

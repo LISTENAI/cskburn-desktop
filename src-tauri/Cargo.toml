@@ -43,3 +43,6 @@ encoding_rs = "0.8.34"
 [features]
 # This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!
 custom-protocol = ["tauri/custom-protocol"]
+
+[patch.crates-io]
+adb_client = { git = "https://github.com/LISTENAI/adb_client.git", branch = "fix-shell-clse" }
