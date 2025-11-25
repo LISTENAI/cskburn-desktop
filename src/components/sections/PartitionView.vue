@@ -126,7 +126,7 @@
             <n-text type="error">异常</n-text>
           </template>
           <template v-else-if="props.progress.perPartition?.[index]?.status == FlashStatus.FLASHING">
-            <field-progress :progress="props.progress.perPartition[index]?.progress ?? 0" />
+            <field-progress :progress="props.progress.perPartition?.[index]?.progress ?? 0" />
           </template>
           <template v-else-if="props.progress.perPartition?.[index]?.status == FlashStatus.VERIFYING">
             <n-text>校验中…</n-text>
