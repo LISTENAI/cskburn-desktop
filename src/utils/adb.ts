@@ -53,3 +53,16 @@ export async function watchDevices(cb: (devices: IDevice[]) => void): Promise<Un
 
   return () => clearInterval(timer);
 }
+
+async function executeShell(identifier: string, commands: string[]): Promise<string> {
+  const { stdout } = await Command.create('adb', ['-s', identifier, 'shell', ...commands]).execute();
+  return stdout;
+}
+
+export async function rebootToRecovery(identifier: string): Promise<void> {
+  try {
+    await executeShell(identifier, ['recovery']);
+  } catch {
+    // 忽略，因为设备必然会断开连接
+  }
+}
