@@ -1,7 +1,9 @@
 use std::sync::Mutex;
 
-use adb_client::ADBServer;
-use tauri::{ipc::Channel, Manager, Resource, ResourceId, Runtime, Webview};
+use adb_client::{ADBDeviceExt, ADBServer};
+use tauri::{
+    async_runtime::spawn_blocking, ipc::Channel, Manager, Resource, ResourceId, Runtime, Webview,
+};
 
 use crate::serialport_watcher::{SerialPortEventHandler, SerialPortWatcher, SerialPortWatcherImpl};
 
@@ -58,7 +60,11 @@ pub fn adb_list_devices() -> Vec<Device> {
         .iter()
         .map(|d| Device {
             identifier: d.identifier.clone(),
-            state: d.state.clone().into(),
+            state: if d.identifier.starts_with("BOOT-") {
+                DeviceState::Recovery
+            } else {
+                d.state.clone().into()
+            },
         })
         .collect()
 }
@@ -122,4 +128,23 @@ pub async fn adb_unwatch_devices<R: Runtime>(webview: Webview<R>, rid: ResourceI
     WatcherResource::with_lock(&watcher, |watcher| {
         watcher.watcher.unwatch();
     });
+}
+
+#[tauri::command]
+pub async fn adb_shell(identifier: String, commands: Vec<String>) -> crate::Result<String> {
+    spawn_blocking(move || {
+        let mut server = ADBServer::default();
+        let mut device = server.get_device_by_name(identifier.as_str())?;
+
+        let mut output = Vec::new();
+
+        device.shell_command(
+            &commands.iter().map(|s| s.as_str()).collect::<Vec<&str>>(),
+            &mut output,
+        )?;
+
+        Ok(String::from_utf8_lossy(&output).to_string())
+    })
+    .await
+    .map_err(|e| crate::Error::from(e))?
 }

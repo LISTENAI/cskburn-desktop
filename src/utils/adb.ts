@@ -38,3 +38,15 @@ export async function watchDevices(cb: (devices: IDevice[]) => void): Promise<Un
     void invoke('adb_unwatch_devices', { rid });
   };
 }
+
+async function executeShell(identifier: string, commands: string[]): Promise<string> {
+  return await invoke('adb_shell', { identifier, commands });
+}
+
+export async function rebootToRecovery(identifier: string): Promise<void> {
+  try {
+    await executeShell(identifier, ['recovery']);
+  } catch {
+    // 忽略，因为设备必然会断开连接
+  }
+}

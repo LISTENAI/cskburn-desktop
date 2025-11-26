@@ -6,6 +6,8 @@ pub enum Error {
     Io(#[from] std::io::Error),
     #[error(transparent)]
     Adb(#[from] adb_client::RustADBError),
+    #[error(transparent)]
+    Tauri(#[from] tauri::Error),
     #[error("Invalid LPK: {0}")]
     InvalidLpk(String),
 }

@@ -7,7 +7,7 @@
     <app-settings v-model:show="settingsShown" />
     <auto-updater />
 
-    <n-spin :show="busyForInfo" :style="{ width: 'fit-content' }">
+    <n-spin :show="busyForInfo || rebootingToRecovery" :style="{ width: 'fit-content' }">
       <n-flex vertical>
         <n-flex align="center" size="large">
           <n-flex align="center">
@@ -16,7 +16,13 @@
               :available-adb-devices="availableAdbDevices" :disabled="busyForInfo || busyForFlash"
               :style="{ width: '400px' }" />
           </n-flex>
-          <n-flex v-if="selectedPort?.type == 'serial'" align="center">
+          <template v-if="selectedPort?.type == 'adb' && selectedPort.state == 'DEVICE'">
+            <n-button secondary :disabled="busyForInfo || busyForFlash || rebootingToRecovery"
+              @click="doAdbRebootToRecovery">
+              进入 Recovery 模式
+            </n-button>
+          </template>
+          <n-flex v-else-if="selectedPort?.type == 'serial'" align="center">
             <div>芯片:</div>
             <n-select v-model:value="selectedChip" placeholder="请选择芯片" :options="supportedChips"
               :disabled="busyForInfo || busyForFlash" :style="{ width: '8em' }" />
@@ -135,6 +141,7 @@ import { List16Regular, Settings16Regular } from '@vicons/fluent';
 import { MODELS, normalizeModelName } from '@/utils/model';
 import type { IFlashImage } from '@/utils/images';
 import { cskburn, CSKBurnTerminatedError, CSKBurnUnnormalExitError } from '@/utils/cskburn';
+import { rebootToRecovery } from '@/utils/adb';
 import { cleanUpTmpFiles } from '@/utils/file';
 
 import { busyOn } from '@/composables/busyOn';
@@ -191,7 +198,8 @@ const readyToFlash = computed(() =>
 
 const readyToFetchInfo = computed(() =>
   selectedPort.value != null &&
-  !(selectedPort.value.type == 'serial' && selectedChip.value == null));
+  !(selectedPort.value.type == 'serial' && selectedChip.value == null) &&
+  !(selectedPort.value.type == 'adb' && selectedPort.value.state != 'RECOVERY'));
 
 const { logFileName, appendLog } = useLogWriter();
 
@@ -238,6 +246,37 @@ async function fetchInfoFromSerial(path: string, chip: string): Promise<void> {
     }
   }
 }
+
+const rebootingToRecovery = ref(false);
+let rebootToRecoveryTimeout: number | undefined;
+
+async function doAdbRebootToRecovery(): Promise<void> {
+  if (selectedPort.value?.type != 'adb') {
+    return;
+  }
+
+  rebootingToRecovery.value = true;
+  rebootToRecoveryTimeout = setTimeout(() => {
+    rebootingToRecovery.value = false;
+    message.error('进入 Recovery 模式超时');
+  }, 10_000);
+
+  try {
+    await rebootToRecovery(selectedPort.value.identifier);
+  } catch { }
+}
+
+watch(availableAdbDevices, (devices) => {
+  if (rebootingToRecovery.value) {
+    const device = devices.find((d) => d.state == 'RECOVERY');
+    if (device) {
+      rebootingToRecovery.value = false;
+      clearTimeout(rebootToRecoveryTimeout);
+      rebootToRecoveryTimeout = undefined;
+      selectedPort.value = { type: 'adb', ...device };
+    }
+  }
+});
 
 const hexImage = useHexImage(images);
 const partitions = usePartitions(images);
