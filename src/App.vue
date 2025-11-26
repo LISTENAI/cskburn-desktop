@@ -129,7 +129,6 @@ import {
 import { getCurrentWindow, ProgressBarStatus, UserAttentionType } from '@tauri-apps/api/window';
 import { confirm } from '@tauri-apps/plugin-dialog';
 import { List16Regular, Settings16Regular } from '@vicons/fluent';
-import { throttle } from 'radash';
 
 import { MODELS, normalizeModelName } from '@/utils/model';
 import type { IFlashImage } from '@/utils/images';
@@ -141,6 +140,7 @@ import { FlashStatus, useFlashProgress } from '@/composables/progress';
 import { useHexImage, usePartitions } from '@/composables/partitions';
 import { useListen } from '@/composables/tauri/useListen';
 import { useAppName, useAppVersion } from '@/composables/tauri/app';
+import { bindProgressBar, bindTitle } from '@/composables/tauri/window';
 import { useLogWriter } from '@/composables/logWriter';
 
 import AppSettings from '@/components/sections/AppSettings.vue';
@@ -368,37 +368,37 @@ function stopFlash(): void {
   aborter?.abort();
 }
 
-const setProgressThrottled = throttle({ interval: 500 }, async (progress: number) =>
-  await getCurrentWindow().setProgressBar({
-    status: ProgressBarStatus.Normal,
-    progress,
-  }));
-
-watch([progress, status], async () => {
+bindProgressBar(() => {
   switch (status.value) {
     case FlashStatus.CONNECTING:
-      await getCurrentWindow().setProgressBar({
+      return {
         status: ProgressBarStatus.Indeterminate,
         progress: 0,
-      });
-      break;
+      };
     case FlashStatus.FLASHING:
     case FlashStatus.VERIFYING:
-      setProgressThrottled(Math.round(progress.progress * 100));
-      break;
+      return {
+        status: ProgressBarStatus.Normal,
+        progress: Math.round(progress.progress * 100),
+      };
+    case FlashStatus.ERROR:
+      return {
+        status: ProgressBarStatus.Error,
+      };
     case FlashStatus.STOPPED:
     case FlashStatus.SUCCESS:
-      await getCurrentWindow().setProgressBar({
+    default:
+      return {
         status: ProgressBarStatus.None,
-      });
-      await getCurrentWindow().requestUserAttention(UserAttentionType.Informational);
-      break;
-    case FlashStatus.ERROR:
-      await getCurrentWindow().setProgressBar({
-        status: ProgressBarStatus.Error,
-      });
-      await getCurrentWindow().requestUserAttention(UserAttentionType.Critical);
-      break;
+      };
+  }
+});
+
+watch(status, async (status) => {
+  if (status == FlashStatus.STOPPED || status == FlashStatus.SUCCESS) {
+    await getCurrentWindow().requestUserAttention(UserAttentionType.Informational);
+  } else if (status == FlashStatus.ERROR) {
+    await getCurrentWindow().requestUserAttention(UserAttentionType.Critical);
   }
 });
 
@@ -423,8 +423,7 @@ const settingsShown = ref(false);
 
 const appName = useAppName();
 const appVersion = useAppVersion();
-
-const windowTitle = computed(() => {
+bindTitle(() => {
   if (!appName.value || !appVersion.value) {
     return undefined;
   }
@@ -433,12 +432,6 @@ const windowTitle = computed(() => {
     return `${appName.value} - v${appVersion.value} (${logFileName.value})`;
   } else {
     return `${appName.value} - v${appVersion.value}`;
-  }
-});
-
-watch(windowTitle, async (title) => {
-  if (title) {
-    await getCurrentWindow().setTitle(title);
   }
 });
 </script>
