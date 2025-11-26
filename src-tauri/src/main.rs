@@ -3,6 +3,7 @@
 
 mod cmds_hex;
 mod cmds_lpk;
+mod cmds_md5;
 mod cmds_serialport;
 mod cmds_string;
 mod error;
@@ -33,6 +34,7 @@ fn main() {
             cmds_serialport::watch_ports,
             cmds_serialport::unwatch_ports,
             cmds_string::decode,
+            cmds_md5::md5,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

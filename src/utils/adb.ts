@@ -67,6 +67,12 @@ export async function rebootToRecovery(identifier: string): Promise<void> {
   }
 }
 
+export async function computeMd5(identifier: string, remote: string): Promise<string | undefined> {
+  const output = await executeShell(identifier, ['md5sum', remote]);
+  const [, md5sum, path] = output.match(/([a-fA-F0-9]{32})\s+(\S+)/) ?? [];
+  return md5sum && path == remote ? md5sum.toLowerCase() : undefined;
+}
+
 type IADBTransferEventHandlers = Partial<{
   onOutput: (output: string) => void;
 }>;

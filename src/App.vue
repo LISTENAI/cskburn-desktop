@@ -144,10 +144,11 @@ import { cskburn, CSKBurnTerminatedError, CSKBurnUnnormalExitError } from '@/uti
 import {
   ADBTransferTerminatedError,
   ADBTransferUnnormalExitError,
+  computeMd5 as computeRemoteMd5,
   pushFile,
   rebootToRecovery,
 } from '@/utils/adb';
-import { cleanUpTmpFiles } from '@/utils/file';
+import { cleanUpTmpFiles, computeMd5 as computeLocalMd5 } from '@/utils/file';
 
 import { busyOn } from '@/composables/busyOn';
 import { useAvailableAdbDevices, useAvailableSerialPorts } from '@/composables/devices';
@@ -463,6 +464,18 @@ async function startFlashOnAdb(identifier: string, signal: AbortSignal): Promise
       });
 
       progress.current = { index, progress: 1 };
+      status.value = FlashStatus.VERIFYING;
+
+      const readPath = `/RAW/NAND/${addr.toString(16)}/${file.size.toString(16)}`;
+      output.value.push(`正在计算设备端 MD5: ${readPath}`);
+      const remoteMd5 = await computeRemoteMd5(identifier, readPath);
+      output.value.push(`- 设备端 MD5: ${remoteMd5}`);
+      const localMd5 = await computeLocalMd5(file.path);
+      output.value.push(`- 本地端 MD5: ${localMd5}`);
+      output.value.push(remoteMd5 == localMd5 ? '- 一致' : '- 不一致');
+      if (remoteMd5 != localMd5) {
+        throw new Error(`分区 #${index + 1} 校验失败 (MD5 不一致)`);
+      }
     }
 
     status.value = FlashStatus.SUCCESS;

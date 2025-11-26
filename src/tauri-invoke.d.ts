@@ -10,4 +10,5 @@ declare module '@tauri-apps/api/core' {
   function invoke<T>(cmd: 'watch_ports', args: { onEvent: Channel<T> }): Promise<number>;
   function invoke(cmd: 'unwatch_ports', args: { rid: number }): Promise<void>;
   function invoke(cmd: 'decode', args: { data: ArrayLike<number> }): Promise<string>;
+  function invoke(cmd: 'md5', args: { path: string }): Promise<string>;
 }

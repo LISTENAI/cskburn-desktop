@@ -1,5 +1,6 @@
 import { appCacheDir, basename, join } from '@tauri-apps/api/path';
 import { mkdir, readFile, remove, stat, writeFile } from '@tauri-apps/plugin-fs';
+import { invoke } from '@tauri-apps/api/core';
 import { sum } from 'radash';
 import { plainToInstance, Type } from 'class-transformer';
 import pMap from 'p-map';
@@ -61,6 +62,10 @@ export async function cleanUpTmpFiles(): Promise<void> {
   } catch {
     // do nothing
   }
+}
+
+export async function computeMd5(path: string): Promise<string> {
+  return (await invoke('md5', { path })).toLowerCase();
 }
 
 async function ensureTmpDir(): Promise<string> {
