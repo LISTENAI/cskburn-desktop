@@ -51,6 +51,11 @@
           "name": "reveal-file-linux",
           "cmd": "/bin/sh",
           "args": true
+        },
+        {
+          "name": "adb",
+          "cmd": "adb",
+          "args": true
         }
       ]
     },

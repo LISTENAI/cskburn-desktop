@@ -12,18 +12,19 @@
         <n-flex align="center" size="large">
           <n-flex align="center">
             <div>端口:</div>
-            <port-selector v-model:port="selectedPort" :disabled="busyForInfo || busyForFlash"
-              :style="{ width: '300px' }" />
+            <port-selector v-model:selected="selectedPort" :available-serial-ports="availableSerialPorts"
+              :available-adb-devices="availableAdbDevices" :disabled="busyForInfo || busyForFlash"
+              :style="{ width: '400px' }" />
           </n-flex>
-          <n-flex align="center">
+          <n-flex v-if="selectedPort?.type == 'serial'" align="center">
             <div>芯片:</div>
             <n-select v-model:value="selectedChip" placeholder="请选择芯片" :options="supportedChips"
               :disabled="busyForInfo || busyForFlash" :style="{ width: '8em' }" />
           </n-flex>
         </n-flex>
         <n-flex align="center" size="large">
-          <n-button secondary :disabled="selectedPort == null || selectedChip == null || busyForInfo || busyForFlash"
-            :style="{ width: '6em' }" @click="fetchInfo">
+          <n-button secondary :disabled="!readyToFetchInfo || busyForInfo || busyForFlash" :style="{ width: '6em' }"
+            @click="fetchInfo">
             获取信息
           </n-button>
           <div v-if="chipId">
@@ -137,6 +138,7 @@ import { cskburn, CSKBurnTerminatedError, CSKBurnUnnormalExitError } from '@/uti
 import { cleanUpTmpFiles } from '@/utils/file';
 
 import { busyOn } from '@/composables/busyOn';
+import { useAvailableAdbDevices, useAvailableSerialPorts } from '@/composables/devices';
 import { FlashStatus, useFlashProgress } from '@/composables/progress';
 import { useHexImage, usePartitions } from '@/composables/partitions';
 import { useListen } from '@/composables/tauri/useListen';
@@ -146,7 +148,7 @@ import { useLogWriter } from '@/composables/logWriter';
 
 import AppSettings from '@/components/sections/AppSettings.vue';
 import AutoUpdater from '@/components/sections/AutoUpdater.vue';
-import PortSelector from '@/components/sections/PortSelector.vue';
+import PortSelector, { type IPortSelection } from '@/components/sections/PortSelector.vue';
 import PartitionView from '@/components/sections/PartitionView.vue';
 import LogView from '@/components/sections/LogView.vue';
 
@@ -154,12 +156,15 @@ import SelectableText from '@/components/common/SelectableText.vue';
 
 const BAUDRATE = 1_500_000;
 
+const availableSerialPorts = useAvailableSerialPorts();
+const availableAdbDevices = useAvailableAdbDevices();
+
 const supportedChips: SelectOption[] = MODELS.map((model) => ({
   value: model.name,
   label: model.brandName,
 }));
 
-const selectedPort = ref<string | null>(null);
+const selectedPort = ref<IPortSelection | null>(null);
 const selectedChip = ref<string | null>(null);
 const images = ref<IFlashImage[]>([]);
 
@@ -180,21 +185,31 @@ const busyForFlash = computed(() =>
 
 const readyToFlash = computed(() =>
   selectedPort.value != null &&
-  selectedChip.value != null &&
+  !(selectedPort.value.type == 'serial' && selectedChip.value == null) &&
   images.value.length > 0 &&
   !hasError.value);
+
+const readyToFetchInfo = computed(() =>
+  selectedPort.value != null &&
+  !(selectedPort.value.type == 'serial' && selectedChip.value == null));
 
 const { logFileName, appendLog } = useLogWriter();
 
 const message = useMessage();
 
 async function fetchInfo(): Promise<void> {
+  if (selectedPort.value?.type == 'serial' && selectedChip.value != null) {
+    await fetchInfoFromSerial(selectedPort.value.path, selectedChip.value);
+  }
+}
+
+async function fetchInfoFromSerial(path: string, chip: string): Promise<void> {
   chipId.value = null;
   flashInfo.value = null;
   output.value.splice(0);
 
   try {
-    await busyOn(cskburn(selectedPort.value!, BAUDRATE, selectedChip.value!, [], {
+    await busyOn(cskburn(path, BAUDRATE, chip, [], {
       onOutput(line) {
         output.value.push(line);
       },
@@ -296,6 +311,14 @@ async function startFlash(): Promise<void> {
     return;
   }
 
+  aborter = new AbortController();
+
+  if (selectedPort.value?.type == 'serial' && selectedChip.value != null) {
+    await startFlashOnSerial(selectedPort.value.path, selectedChip.value, aborter.signal);
+  }
+}
+
+async function startFlashOnSerial(path: string, chip: string, signal: AbortSignal): Promise<void> {
   const args = ['--verify-all'];
   if (hexImage.value) {
     args.push(hexImage.value.file.path);
@@ -305,15 +328,13 @@ async function startFlash(): Promise<void> {
     }
   }
 
-  aborter = new AbortController();
-
   progress.current = null;
   output.value.splice(0);
   status.value = FlashStatus.CONNECTING;
 
   try {
-    await cskburn(selectedPort.value!, BAUDRATE, selectedChip.value!, args, {
-      signal: aborter.signal,
+    await cskburn(path, BAUDRATE, chip, args, {
+      signal,
       onOutput(line) {
         output.value.push(line);
       },
