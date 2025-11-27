@@ -37,8 +37,8 @@
             Chip ID: <selectable-text selectable>{{ chipId }}</selectable-text>
           </div>
           <div v-if="flashInfo">
-            Flash ID: <selectable-text selectable>{{ flashInfo.id }}</selectable-text>
-            ({{ Math.round(flashInfo.size / 1024 / 1024) }} MB)
+            Flash: {{ Math.round(flashInfo.size / 1024 / 1024) }} MB
+            <selectable-text v-if="flashInfo.id" selectable>{{ flashInfo.id }}</selectable-text>
           </div>
         </n-flex>
       </n-flex>
@@ -145,6 +145,8 @@ import {
   ADBTransferTerminatedError,
   ADBTransferUnnormalExitError,
   computeMd5 as computeRemoteMd5,
+  fetchChipId,
+  fetchFlashSize,
   pushFile,
   rebootToRecovery,
 } from '@/utils/adb';
@@ -182,7 +184,7 @@ const selectedChip = ref<string | null>(null);
 const images = ref<IFlashImage[]>([]);
 
 const chipId = ref<string | null>(null);
-const flashInfo = ref<{ id: string, size: number } | null>(null);
+const flashInfo = ref<{ id?: string, size: number } | null>(null);
 
 const flashSize = computed(() => flashInfo.value?.size ?? null);
 
@@ -215,6 +217,8 @@ const message = useMessage();
 async function fetchInfo(): Promise<void> {
   if (selectedPort.value?.type == 'serial' && selectedChip.value != null) {
     await fetchInfoFromSerial(selectedPort.value.path, selectedChip.value);
+  } else if (selectedPort.value?.type == 'adb' && selectedPort.value.state == 'RECOVERY') {
+    await fetchInfoFromAdb(selectedPort.value.identifier);
   }
 }
 
@@ -251,6 +255,31 @@ async function fetchInfoFromSerial(path: string, chip: string): Promise<void> {
     } else {
       output.value.push(`[获取信息失败: 发生异常 ${e}]`);
     }
+  }
+}
+
+async function fetchInfoFromAdb(identifier: string): Promise<void> {
+  chipId.value = null;
+  flashInfo.value = null;
+  output.value.splice(0);
+
+  try {
+    await busyOn((async () => {
+      output.value.push(`设备: ${identifier}`);
+
+      output.value.push('[正在获取 Chip ID]');
+      chipId.value = await fetchChipId(identifier);
+
+      output.value.push('[正在获取 Flash 大小]');
+      const size = await fetchFlashSize(identifier);
+      flashInfo.value = size ? { size } : null;
+
+      output.value.push(`[获取信息成功]`);
+    })(), busyForInfo);
+  } catch (e) {
+    console.error(e);
+    message.error('获取信息失败');
+    output.value.push(`[获取信息失败: 发生异常 ${e}]`);
   }
 }
 
@@ -445,6 +474,13 @@ async function startFlashOnAdb(identifier: string, signal: AbortSignal): Promise
   output.value.push(`设备: ${identifier}`);
 
   try {
+    output.value.push('[正在获取 Chip ID]');
+    chipId.value = await fetchChipId(identifier);
+
+    output.value.push('[正在获取 Flash 大小]');
+    const size = await fetchFlashSize(identifier);
+    flashInfo.value = size ? { size } : null;
+
     for (const [index, { addr, file }] of partitions.value.entries()) {
       output.value.push(`[正在烧录分区 #${index + 1}]`);
 
