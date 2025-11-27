@@ -44,6 +44,14 @@ export async function listDevices(): Promise<IDevice[]> {
 }
 
 export async function watchDevices(cb: (devices: IDevice[]) => void): Promise<UnwatchFn> {
+  try {
+    cb(await listDevices());
+  } catch (e) {
+    cb([]);
+    console.warn('Failed to list ADB devices:', e);
+    return () => { };
+  }
+
   const timer = setInterval(async () => {
     const devices = await listDevices();
     cb(devices);
