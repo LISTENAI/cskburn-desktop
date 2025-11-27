@@ -68,9 +68,10 @@
       </n-flex>
 
       <n-flex align="center" :wrap="false" :style="{ flex: '0 0 auto' }">
-        <n-tooltip>
+        <n-tooltip :disabled="busyForFlash">
           <template #trigger>
-            <n-button quaternary type="default" :focusable="false" @click="() => settingsShown = true">
+            <n-button quaternary type="default" :focusable="false" :disabled="busyForFlash"
+              @click="() => settingsShown = true">
               <template #icon>
                 <n-icon>
                   <Settings16Regular />

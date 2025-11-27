@@ -1,6 +1,5 @@
 <template>
-  <n-modal v-model:show="show" :style="{ maxWidth: '600px' }" :bordered="false" :close-on-esc="false"
-    :mask-closable="false">
+  <n-modal v-model:show="show" :style="{ maxWidth: '600px' }" :bordered="false">
     <n-card title="设置">
       <template #footer>
         <n-button type="primary" size="medium" :disabled="!canSave" @click="save">保存设置</n-button>
@@ -34,11 +33,14 @@ import {
   NInput,
   NModal,
   NSpace,
+  useMessage,
 } from 'naive-ui';
 import { FolderOpen16Regular } from '@vicons/fluent';
 import { open } from '@tauri-apps/plugin-dialog';
 
 import { settings } from '@/composables/tauri/settings';
+
+const message = useMessage();
 
 const show = defineModel<boolean>('show', { default: true });
 
@@ -75,5 +77,6 @@ async function save() {
   await settings.set('logDir', form.logDir);
   await settings.save();
   show.value = false;
+  message.success('设置已保存');
 }
 </script>
