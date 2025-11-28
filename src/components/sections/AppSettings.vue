@@ -25,6 +25,9 @@
             <n-button @click="() => form.serialBaudRate = DEFAULT_BAUD_RATE">恢复默认</n-button>
           </n-space>
         </n-form-item>
+        <n-form-item label="ADB 版本">
+          <span>{{ adbVersion ?? '未知' }}</span>
+        </n-form-item>
       </n-form>
     </n-card>
   </n-modal>
@@ -50,6 +53,7 @@ import PathPicker from '@/components/common/PathPicker.vue';
 import FieldAddr from '@/components/datatable/FieldAddr.vue';
 
 import { DEFAULT_BAUD_RATE } from '@/utils/cskburn';
+import { checkVersion } from '@/utils/adb';
 
 const message = useMessage();
 
@@ -74,6 +78,11 @@ onMounted(async () => {
   form.logDir = await settings.get('logDir') ?? null;
   saveLogs.value = !!form.logDir;
   form.serialBaudRate = await settings.get('serialBaudRate') ?? DEFAULT_BAUD_RATE;
+});
+
+const adbVersion = ref<string | null>(null);
+onMounted(async () => {
+  adbVersion.value = await checkVersion();
 });
 
 const canSave = computed(() => {
