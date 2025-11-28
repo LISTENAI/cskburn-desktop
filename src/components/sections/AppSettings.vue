@@ -2,22 +2,20 @@
   <n-modal v-model:show="show" :style="{ maxWidth: '600px' }" :bordered="false">
     <n-card title="设置">
       <template #footer>
-        <n-button type="primary" size="medium" :disabled="!canSave" @click="save">保存设置</n-button>
+        <n-flex justify="end">
+          <n-button secondary size="medium" @click="close">关闭</n-button>
+          <n-button type="primary" size="medium" :disabled="!canSave" @click="save">保存设置</n-button>
+        </n-flex>
       </template>
-      <n-flex vertical gap="16px">
-        <n-checkbox v-model:checked="form.saveLogs">保留操作记录</n-checkbox>
-        <n-space align="center" size="small">
-          <n-input :value="form.logDir" :disabled="!form.saveLogs" size="small" placeholder="记录保存路径" readonly
-            :style="{ flex: '1 1 auto' }" />
-          <n-button size="small" :disabled="!form.saveLogs" @click="pickLogDir">
-            <template #icon>
-              <n-icon>
-                <FolderOpen16Regular />
-              </n-icon>
-            </template>
-          </n-button>
-        </n-space>
-      </n-flex>
+      <n-form label-placement="left" label-width="120px">
+        <n-form-item label="操作记录">
+          <n-space vertical :style="{ width: '100%', marginTop: '6px' }">
+            <n-checkbox v-model:checked="form.saveLogs">保留操作记录</n-checkbox>
+            <path-picker v-model:value="form.logDir" :disabled="!form.saveLogs" placeholder="记录保存路径"
+              :open-options="{ directory: true }" />
+          </n-space>
+        </n-form-item>
+      </n-form>
     </n-card>
   </n-modal>
 </template>
@@ -29,16 +27,16 @@ import {
   NCard,
   NCheckbox,
   NFlex,
-  NIcon,
-  NInput,
+  NForm,
+  NFormItem,
   NModal,
   NSpace,
   useMessage,
 } from 'naive-ui';
-import { FolderOpen16Regular } from '@vicons/fluent';
-import { open } from '@tauri-apps/plugin-dialog';
 
 import { settings } from '@/composables/tauri/settings';
+
+import PathPicker from '@/components/common/PathPicker.vue';
 
 const message = useMessage();
 
@@ -57,16 +55,13 @@ onMounted(async () => {
   form.logDir = await settings.get('logDir') ?? null;
 });
 
-async function pickLogDir() {
-  const dir = await open({ directory: true });
-  if (dir) {
-    form.logDir = dir;
-  }
-}
-
 const canSave = computed(() => {
   return !form.saveLogs || (form.saveLogs && form.logDir);
 });
+
+function close() {
+  show.value = false;
+}
 
 async function save() {
   if (!form.saveLogs) {
@@ -76,6 +71,7 @@ async function save() {
   await settings.set('saveLogs', form.saveLogs);
   await settings.set('logDir', form.logDir);
   await settings.save();
+
   show.value = false;
   message.success('设置已保存');
 }
