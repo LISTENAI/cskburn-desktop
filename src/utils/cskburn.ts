@@ -3,6 +3,8 @@ import PQueue from 'p-queue';
 
 import { decode } from './strings';
 
+export const DEFAULT_BAUD_RATE = 1_500_000;
+
 type ICSKBurnEventHandlers = Partial<{
   onOutput: (output: string) => void;
   onWaitingForDevice: () => void;

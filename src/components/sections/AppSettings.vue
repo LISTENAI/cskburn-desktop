@@ -15,6 +15,16 @@
               :open-options="{ directory: true }" />
           </n-space>
         </n-form-item>
+        <n-form-item label="串口波特率">
+          <n-space size="small">
+            <field-addr v-model:value="form.serialBaudRate" placeholder="请输入串口波特率"
+              :formatter="(val: number) => String(val)" :parser="(val) => {
+                const parsed = parseInt(val);
+                return isNaN(parsed) ? undefined : parsed;
+              }" />
+            <n-button @click="() => form.serialBaudRate = DEFAULT_BAUD_RATE">恢复默认</n-button>
+          </n-space>
+        </n-form-item>
       </n-form>
     </n-card>
   </n-modal>
@@ -37,6 +47,9 @@ import {
 import { settings } from '@/composables/tauri/settings';
 
 import PathPicker from '@/components/common/PathPicker.vue';
+import FieldAddr from '@/components/datatable/FieldAddr.vue';
+
+import { DEFAULT_BAUD_RATE } from '@/utils/cskburn';
 
 const message = useMessage();
 
@@ -45,14 +58,17 @@ const show = defineModel<boolean>('show', { default: true });
 const form = reactive<{
   saveLogs: boolean;
   logDir: string | null;
+  serialBaudRate: number;
 }>({
   saveLogs: false,
   logDir: null,
+  serialBaudRate: DEFAULT_BAUD_RATE,
 });
 
 onMounted(async () => {
   form.saveLogs = await settings.get('saveLogs') ?? false;
   form.logDir = await settings.get('logDir') ?? null;
+  form.serialBaudRate = await settings.get('serialBaudRate') ?? DEFAULT_BAUD_RATE;
 });
 
 const canSave = computed(() => {
@@ -70,6 +86,7 @@ async function save() {
 
   await settings.set('saveLogs', form.saveLogs);
   await settings.set('logDir', form.logDir);
+  await settings.set('serialBaudRate', form.serialBaudRate);
   await settings.save();
 
   show.value = false;

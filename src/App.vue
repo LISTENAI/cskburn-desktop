@@ -140,7 +140,7 @@ import { List16Regular, Settings16Regular } from '@vicons/fluent';
 
 import { MODELS, normalizeModelName } from '@/utils/model';
 import type { IFlashImage } from '@/utils/images';
-import { cskburn, CSKBurnTerminatedError, CSKBurnUnnormalExitError } from '@/utils/cskburn';
+import { cskburn, CSKBurnTerminatedError, CSKBurnUnnormalExitError, DEFAULT_BAUD_RATE } from '@/utils/cskburn';
 import {
   ADBTransferTerminatedError,
   ADBTransferUnnormalExitError,
@@ -160,6 +160,7 @@ import { useListen } from '@/composables/tauri/useListen';
 import { useAppName, useAppVersion } from '@/composables/tauri/app';
 import { bindProgressBar, bindTitle } from '@/composables/tauri/window';
 import { useLogWriter } from '@/composables/logWriter';
+import { useSettings } from '@/composables/tauri/settings';
 
 import AppSettings from '@/components/sections/AppSettings.vue';
 import AutoUpdater from '@/components/sections/AutoUpdater.vue';
@@ -169,7 +170,7 @@ import LogView from '@/components/sections/LogView.vue';
 
 import SelectableText from '@/components/common/SelectableText.vue';
 
-const BAUDRATE = 1_500_000;
+const baudrate = useSettings<number>('serialBaudRate', DEFAULT_BAUD_RATE);
 
 const availableSerialPorts = useAvailableSerialPorts();
 const availableAdbDevices = useAvailableAdbDevices();
@@ -226,9 +227,12 @@ async function fetchInfoFromSerial(path: string, chip: string): Promise<void> {
   chipId.value = null;
   flashInfo.value = null;
   output.value.splice(0);
+  output.value.push(`* port: ${path}`);
+  output.value.push(`* baud: ${baudrate.value}`);
+  output.value.push(`* chip: ${chip}`);
 
   try {
-    await busyOn(cskburn(path, BAUDRATE, chip, [], {
+    await busyOn(cskburn(path, baudrate.value, chip, [], {
       onOutput(line) {
         output.value.push(line);
       },
@@ -407,10 +411,13 @@ async function startFlashOnSerial(path: string, chip: string, signal: AbortSigna
 
   progress.current = null;
   output.value.splice(0);
+  output.value.push(`* port: ${path}`);
+  output.value.push(`* baud: ${baudrate.value}`);
+  output.value.push(`* chip: ${chip}`);
   status.value = FlashStatus.CONNECTING;
 
   try {
-    await cskburn(path, BAUDRATE, chip, args, {
+    await cskburn(path, baudrate.value, chip, args, {
       signal,
       onOutput(line) {
         output.value.push(line);

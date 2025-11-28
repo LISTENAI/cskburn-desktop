@@ -5,11 +5,13 @@ import { useListen } from '@/composables/tauri/useListen';
 
 export const settings = new LazyStore('settings.json');
 
-export function useSettings<T>(key: string): Ref<T | undefined> {
+export function useSettings<T>(key: string): Ref<T | undefined>;
+export function useSettings<T, D extends T | undefined = T>(key: string, defaultValue: D): Ref<D>;
+export function useSettings<T, D extends T | undefined = T>(key: string, defaultValue?: D): Ref<T | undefined> | Ref<D> {
   const val = ref<T>();
 
   onMounted(async () => {
-    val.value = await settings.get<T>(key);
+    val.value = await settings.get<T>(key) ?? defaultValue;
   });
 
   watch(val, async (newVal) => {
