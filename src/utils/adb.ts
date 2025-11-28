@@ -2,6 +2,12 @@ import { Child, Command } from '@tauri-apps/plugin-shell';
 
 type UnwatchFn = () => void;
 
+export async function checkVersion(): Promise<string> {
+  const { stdout } = await Command.create('adb', ['version']).execute();
+  const match = stdout.match(/Android Debug Bridge version (.+)/);
+  return match ? match[1] : 'unknown';
+}
+
 export interface IDevice {
   identifier: string;
   state: IDeviceState;

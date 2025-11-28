@@ -10,8 +10,8 @@
       <n-form label-placement="left" label-width="120px">
         <n-form-item label="操作记录">
           <n-space vertical :style="{ width: '100%', marginTop: '6px' }">
-            <n-checkbox v-model:checked="form.saveLogs">保留操作记录</n-checkbox>
-            <path-picker v-model:value="form.logDir" :disabled="!form.saveLogs" placeholder="记录保存路径"
+            <n-checkbox v-model:checked="saveLogs">保留操作记录</n-checkbox>
+            <path-picker v-model:value="form.logDir" :disabled="!saveLogs" placeholder="记录保存路径"
               :open-options="{ directory: true }" />
           </n-space>
         </n-form-item>
@@ -31,7 +31,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, onMounted, reactive } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import {
   NButton,
   NCard,
@@ -56,23 +56,28 @@ const message = useMessage();
 const show = defineModel<boolean>('show', { default: true });
 
 const form = reactive<{
-  saveLogs: boolean;
   logDir: string | null;
   serialBaudRate: number;
 }>({
-  saveLogs: false,
   logDir: null,
   serialBaudRate: DEFAULT_BAUD_RATE,
 });
 
+const saveLogs = ref(false);
+watch(saveLogs, (val) => {
+  if (!val) {
+    form.logDir = null;
+  }
+});
+
 onMounted(async () => {
-  form.saveLogs = await settings.get('saveLogs') ?? false;
   form.logDir = await settings.get('logDir') ?? null;
+  saveLogs.value = !!form.logDir;
   form.serialBaudRate = await settings.get('serialBaudRate') ?? DEFAULT_BAUD_RATE;
 });
 
 const canSave = computed(() => {
-  return !form.saveLogs || (form.saveLogs && form.logDir);
+  return !saveLogs.value || (saveLogs.value && form.logDir);
 });
 
 function close() {
@@ -80,11 +85,6 @@ function close() {
 }
 
 async function save() {
-  if (!form.saveLogs) {
-    form.logDir = null;
-  }
-
-  await settings.set('saveLogs', form.saveLogs);
   await settings.set('logDir', form.logDir);
   await settings.set('serialBaudRate', form.serialBaudRate);
   await settings.save();

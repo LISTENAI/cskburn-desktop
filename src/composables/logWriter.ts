@@ -7,7 +7,6 @@ import { join } from '@tauri-apps/api/path';
 
 export function useLogWriter(): ILogWriter {
   const fileName = ref<string>();
-  const saveLogs = useSettings<boolean>('saveLogs');
   const logDir = useSettings<string>('logDir');
 
   let logFile: {
@@ -39,8 +38,8 @@ export function useLogWriter(): ILogWriter {
     logFile.wrote = true;
   }
 
-  watch([saveLogs, logDir], async ([saveLogs, logDir]) => {
-    if (saveLogs && logDir) {
+  watch(logDir, async (logDir) => {
+    if (logDir) {
       if (!fileName.value) {
         fileName.value = newFileName();
         const path = await join(logDir, fileName.value);
