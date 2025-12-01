@@ -29,11 +29,12 @@ Linux 平台提供 `x86_64` 和 `aarch64` 两种架构的安装包，可根据�
 sudo apt install --fix-broken cskburn-desktop_linux-x86_64.deb
 ```
 
-你还需要为串口设备赋予读写权限。在终端执行 `sudo gedit /etc/udev/rules.d/99-usbserial.rules`，在弹出编辑器中输入以下内容：
+你还需要为设备赋予读写权限。在终端执行 `sudo gedit /etc/udev/rules.d/99-cskburn.rules`，在弹出编辑器中输入以下内容：
 
 ```
 SUBSYSTEMS=="usb", KERNEL=="ttyACM[0-9]*", MODE="0666"
 SUBSYSTEMS=="usb", KERNEL=="ttyUSB[0-9]*", MODE="0666"
+SUBSYSTEM=="usb", ATTR{idVendor}=="0483", ATTR{idProduct}=="0adb", MODE="0666"
 ```
 
 保存并关闭编辑器，重新插拔设备即可。
