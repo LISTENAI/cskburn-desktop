@@ -79,6 +79,14 @@ export async function rebootToRecovery(identifier: string): Promise<void> {
   }
 }
 
+export async function rebootToSystem(identifier: string): Promise<void> {
+  try {
+    await executeShell(identifier, ['reboot', 'hard']);
+  } catch {
+    // 忽略，因为设备必然会断开连接
+  }
+}
+
 export async function computeMd5(identifier: string, remote: string): Promise<string | undefined> {
   const output = await executeShell(identifier, ['md5sum', remote]);
   const [, md5sum, path] = output.match(/([a-fA-F0-9]{32})\s+(\S+)/) ?? [];

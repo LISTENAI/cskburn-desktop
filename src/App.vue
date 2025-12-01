@@ -149,6 +149,7 @@ import {
   fetchFlashSize,
   pushFile,
   rebootToRecovery,
+  rebootToSystem,
 } from '@/utils/adb';
 import { cleanUpTmpFiles, computeMd5 as computeLocalMd5 } from '@/utils/file';
 
@@ -520,6 +521,9 @@ async function startFlashOnAdb(identifier: string, signal: AbortSignal): Promise
         throw new Error(`分区 #${index + 1} 校验失败 (MD5 不一致)`);
       }
     }
+
+    output.value.push('[正在复位设备]');
+    await rebootToSystem(identifier);
 
     status.value = FlashStatus.SUCCESS;
     output.value.push('[烧录成功]');
