@@ -38,7 +38,9 @@
           </div>
           <div v-if="flashInfo">
             Flash: {{ Math.round(flashInfo.size / 1024 / 1024) }} MB
-            <selectable-text v-if="flashInfo.id" selectable>{{ flashInfo.id }}</selectable-text>
+            <template v-if="flashInfo.id">
+              (<selectable-text selectable>{{ flashInfo.id }}</selectable-text>)
+            </template>
           </div>
         </n-flex>
       </n-flex>
