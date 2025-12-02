@@ -14,11 +14,13 @@ jobs:
           - name: darwin-aarch64
             platform: macos-latest
             target: aarch64-apple-darwin
-            bundles: [dmg, updater]
+            bundles: [app, dmg]
+            updater: true
           - name: darwin-x86_64
             platform: macos-latest
             target: x86_64-apple-darwin
-            bundles: [dmg, updater]
+            bundles: [app, dmg]
+            updater: true
           - name: linux-aarch64
             platform: ubuntu-22.04
             target: aarch64-unknown-linux-gnu
@@ -30,11 +32,13 @@ jobs:
             target: x86_64-unknown-linux-gnu
             triple: x86_64-linux-gnu
             arch: amd64
-            bundles: [deb, appimage, updater]
+            bundles: [deb, appimage]
+            updater: true
           - name: windows-x86_64
             platform: windows-latest
             target: x86_64-pc-windows-msvc
-            bundles: [nsis, updater]
+            bundles: [nsis]
+            updater: true
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -112,21 +116,24 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Decide target bundles
-        id: target
+      - name: Update updater configuration
         shell: python
         run: |
-          from os import getenv
+          import os
+          import json
 
-          bundles = '${{ join(matrix.bundles, ',') }}'.split(',')
-          if not getenv('TAURI_SIGNING_PRIVATE_KEY'):
-            bundles = [bundle for bundle in bundles if bundle != 'updater']
+          tauri_conf_path = os.path.join('src-tauri', 'tauri.conf.json')
 
-          bundles = ','.join(bundles)
-          print(f'bundles={bundles}')
+          with open(tauri_conf_path, 'r') as f:
+            tauri_conf = json.load(f)
 
-          with open(getenv('GITHUB_OUTPUT'), 'at') as f:
-            f.writelines(f'bundles={bundles}')
+          create_updater = "${{ matrix.updater }}" == "true" \
+                       and os.getenv('TAURI_SIGNING_PRIVATE_KEY') is not None
+
+          tauri_conf['bundle']['createUpdaterArtifacts'] = 'v1Compatible' if create_updater else False
+
+          with open(tauri_conf_path, 'w') as f:
+            json.dump(tauri_conf, f, indent=2)
         env:
           TAURI_SIGNING_PRIVATE_KEY: '${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}'
 
@@ -136,7 +143,7 @@ jobs:
         with:
           args: >
             --target ${{ matrix.target }}
-            --bundles ${{ steps.target.outputs.bundles }}
+            --bundles ${{ join(matrix.bundles, ',') }}
         env:
           TAURI_SIGNING_PRIVATE_KEY: '${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}'
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ''

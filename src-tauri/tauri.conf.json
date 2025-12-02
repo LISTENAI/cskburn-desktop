@@ -22,6 +22,7 @@
     "externalBin": [
       "cskburn-cli/cskburn"
     ],
+    "createUpdaterArtifacts": "v1Compatible",
     "windows": {
       "webviewInstallMode": {
         "type": "offlineInstaller"
