@@ -81,7 +81,7 @@
               @click="() => settingsShown = true">
               <template #icon>
                 <n-icon>
-                  <Settings16Regular />
+                  <Settings16Filled />
                 </n-icon>
               </template>
             </n-button>
@@ -136,7 +136,7 @@ import {
 } from 'naive-ui';
 import { getCurrentWindow, ProgressBarStatus, UserAttentionType } from '@tauri-apps/api/window';
 import { confirm } from '@tauri-apps/plugin-dialog';
-import { List16Regular, Settings16Regular } from '@vicons/fluent';
+import { List16Regular, Settings16Filled } from '@vicons/fluent';
 
 import { MODELS, normalizeModelName } from '@/utils/model';
 import type { IFlashImage } from '@/utils/images';
