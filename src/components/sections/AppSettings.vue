@@ -27,7 +27,7 @@
 </template>
 
 <script lang="ts" setup>
-import { onMounted, reactive, ref } from 'vue';
+import { onMounted, reactive, ref, watch } from 'vue';
 import {
   NButton,
   NCard,
@@ -48,7 +48,7 @@ import { checkVersion } from '@/utils/adb';
 
 const message = useMessage();
 
-const show = defineModel<boolean>('show', { default: true });
+const show = defineModel<boolean>('show', { default: false });
 
 const form = reactive<{
   serialBaudRate: number;
@@ -56,8 +56,10 @@ const form = reactive<{
   serialBaudRate: DEFAULT_BAUD_RATE,
 });
 
-onMounted(async () => {
-  form.serialBaudRate = await settings.get('serialBaudRate') ?? DEFAULT_BAUD_RATE;
+watch(show, async (show) => {
+  if (show) {
+    form.serialBaudRate = await settings.get('serialBaudRate') ?? DEFAULT_BAUD_RATE;
+  }
 });
 
 const adbVersion = ref<string | null>(null);
