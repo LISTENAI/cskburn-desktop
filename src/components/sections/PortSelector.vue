@@ -66,9 +66,9 @@ const availableSelections = computed(() => [
 const selectedKey = computed({
   get: () => {
     const selected = selectedPort.value;
-    if (selected?.type == 'serial') {
+    if (selected?.type === 'serial') {
       return `serial:${selected.path}`;
-    } else if (selected?.type == 'adb') {
+    } else if (selected?.type === 'adb') {
       return `adb:${selected.identifier}`;
     }
     return null;

@@ -10,8 +10,8 @@ export function useListen(...args: unknown[]): void {
   let unlistenFn: UnlistenFn | undefined;
   let unmounted = false;
 
-  const listenFn = typeof args[0] == 'function' ? args[0] : listen;
-  const listenArgs = typeof args[0] == 'function' ? [] : args;
+  const listenFn = typeof args[0] === 'function' ? args[0] : listen;
+  const listenArgs = typeof args[0] === 'function' ? [] : args;
 
   onMounted(async () => {
     unlistenFn = await listenFn(...listenArgs);

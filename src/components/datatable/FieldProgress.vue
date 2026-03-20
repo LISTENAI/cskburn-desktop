@@ -1,5 +1,5 @@
 <template>
-  <field-base :class="{ [$style.completed]: props.progress == 1.0 }">
+  <field-base :class="{ [$style.completed]: props.progress === 1.0 }">
     {{ (props.progress * 100).toFixed(1) }}%
   </field-base>
 </template>

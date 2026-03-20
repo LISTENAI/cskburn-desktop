@@ -26,7 +26,7 @@ export async function readImages(paths: string[]): Promise<IFlashImage[]> {
     ext: path.toLowerCase().split('.').pop(),
   }));
 
-  const hexFile = files.find(({ ext }) => ext == 'hex');
+  const hexFile = files.find(({ ext }) => ext === 'hex');
   if (hexFile) {  // Only one hex file is allowed
     return [{
       format: 'hex',
@@ -35,7 +35,7 @@ export async function readImages(paths: string[]): Promise<IFlashImage[]> {
   }
 
   return await pMap(files, async ({ path, ext }) => {
-    if (ext == 'lpk') {
+    if (ext === 'lpk') {
       return {
         format: 'lpk',
         file: await LpkFile.from(path),

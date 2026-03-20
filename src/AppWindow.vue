@@ -23,5 +23,5 @@ import {
 import App from '@/App.vue';
 
 const osTheme = useOsTheme();
-const darkMode = computed(() => osTheme.value == 'dark');
+const darkMode = computed(() => osTheme.value === 'dark');
 </script>

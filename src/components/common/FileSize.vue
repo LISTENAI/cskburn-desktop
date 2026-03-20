@@ -1,6 +1,6 @@
 <template>
   <span :class="$style.size" @click="switchUnit">
-    {{ unit == 0 ? value : value.toFixed(2) }} {{ UNIT[unit] }}
+    {{ unit === 0 ? value : value.toFixed(2) }} {{ UNIT[unit] }}
   </span>
 </template>
 

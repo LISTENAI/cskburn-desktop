@@ -4,7 +4,7 @@
       正在解析
     </template>
     <file-dropper :disabled="props.busy" :style="{ height: '100%' }" @file-drop="handleFiles">
-      <n-element v-if="images.length == 0" :class="$style.empty" :style="{ height: '100%' }">
+      <n-element v-if="images.length === 0" :class="$style.empty" :style="{ height: '100%' }">
         <n-flex align="center" justify="center" :style="{ height: '100%' }">
           <n-button quaternary round size="large" @click="handleFilePick">
             点击选择或将固件拖放到此处
@@ -26,19 +26,19 @@
             <template v-if="props.errors[0]">
               <n-text type="error">{{ props.errors[0] }}</n-text>
             </template>
-            <template v-if="props.progress.status == FlashStatus.STOPPED">
+            <template v-if="props.progress.status === FlashStatus.STOPPED">
               <n-text type="error">已停止</n-text>
             </template>
-            <template v-else-if="props.progress.status == FlashStatus.ERROR">
+            <template v-else-if="props.progress.status === FlashStatus.ERROR">
               <n-text type="error">异常</n-text>
             </template>
-            <template v-else-if="props.progress.status == FlashStatus.FLASHING">
+            <template v-else-if="props.progress.status === FlashStatus.FLASHING">
               <n-text>{{ (props.progress.progress * 100).toFixed(1) }}%</n-text>
             </template>
-            <template v-else-if="props.progress.status == FlashStatus.VERIFYING">
+            <template v-else-if="props.progress.status === FlashStatus.VERIFYING">
               <n-text>校验中…</n-text>
             </template>
-            <template v-else-if="props.progress.status == FlashStatus.SUCCESS">
+            <template v-else-if="props.progress.status === FlashStatus.SUCCESS">
               <n-text type="success">已完成</n-text>
             </template>
             <template v-else>
@@ -119,21 +119,21 @@
               <span>{{ props.errors[index] }}</span>
             </n-popover>
           </template>
-          <template v-else-if="props.progress.perPartition?.[index]?.status == FlashStatus.STOPPED">
+          <template v-else-if="props.progress.perPartition?.[index]?.status === FlashStatus.STOPPED">
             <n-text type="error">已停止</n-text>
           </template>
-          <template v-else-if="props.progress.perPartition?.[index]?.status == FlashStatus.ERROR">
+          <template v-else-if="props.progress.perPartition?.[index]?.status === FlashStatus.ERROR">
             <n-text type="error">异常</n-text>
           </template>
-          <template v-else-if="props.progress.perPartition?.[index]?.status == FlashStatus.FLASHING">
-            <field-progress v-if="typeof props.progress.perPartition?.[index]?.progress == 'number'"
+          <template v-else-if="props.progress.perPartition?.[index]?.status === FlashStatus.FLASHING">
+            <field-progress v-if="typeof props.progress.perPartition?.[index]?.progress === 'number'"
               :progress="props.progress.perPartition?.[index]?.progress" />
             <n-text v-else>烧录中…</n-text>
           </template>
-          <template v-else-if="props.progress.perPartition?.[index]?.status == FlashStatus.VERIFYING">
+          <template v-else-if="props.progress.perPartition?.[index]?.status === FlashStatus.VERIFYING">
             <n-text>校验中…</n-text>
           </template>
-          <template v-else-if="props.progress.perPartition?.[index]?.status == FlashStatus.SUCCESS">
+          <template v-else-if="props.progress.perPartition?.[index]?.status === FlashStatus.SUCCESS">
             <n-text type="success">已完成</n-text>
           </template>
           <template v-else>
@@ -229,8 +229,8 @@ const parsing = ref(false);
 async function handleFiles(files: string[]) {
   try {
     const parsed = await busyOn(readImages(files), parsing);
-    const openedHexImage = images.value.find((image) => image.format == 'hex');
-    const pendingHexImage = parsed.find((image) => image.format == 'hex');
+    const openedHexImage = images.value.find((image) => image.format === 'hex');
+    const pendingHexImage = parsed.find((image) => image.format === 'hex');
     if (pendingHexImage) {
       // Only one hex file is allowed
       await pMap(images.value, (image) => image.file.free());

@@ -8,14 +8,14 @@ export const MODELS: IModelDefinition[] = [
   {
     name: 'venus',
     brandName: 'CSK6',
-    match: (slug) => slug.toLowerCase() == 'venus' ||
-      slug == '6' ||
+    match: (slug) => slug.toLowerCase() === 'venus' ||
+      slug === '6' ||
       slug.toLowerCase().startsWith('csk6'),
   },
   {
     name: 'arcs',
     brandName: 'LS26',
-    match: (slug) => slug.toLowerCase() == 'arcs' ||
+    match: (slug) => slug.toLowerCase() === 'arcs' ||
       slug.toLowerCase().startsWith('ls26'),
   },
 ];

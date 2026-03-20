@@ -39,7 +39,7 @@ export function useFlashProgress(images: Ref<IFlashImage[]>, status: Ref<FlashSt
     return partitions.value.map((_, index) => {
       if (current.value == null || current.value.index < index) {
         return null;
-      } else if (current.value.index == index) {
+      } else if (current.value.index === index) {
         return { progress: current.value.progress, status: status.value };
       } else {
         return { progress: 1, status: FlashStatus.SUCCESS };
@@ -48,7 +48,7 @@ export function useFlashProgress(images: Ref<IFlashImage[]>, status: Ref<FlashSt
   });
 
   const progress = computed(() => {
-    if (images.value.length == 0 || current.value == null) {
+    if (images.value.length === 0 || current.value == null) {
       return 0;
     }
 

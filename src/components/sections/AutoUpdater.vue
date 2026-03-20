@@ -30,7 +30,7 @@ const downloadedLength = ref(0);
 const done = ref(false);
 
 const percentage = computed(() => {
-  return totalLength.value == 0 ? 0 : downloadedLength.value / totalLength.value * 100;
+  return totalLength.value === 0 ? 0 : downloadedLength.value / totalLength.value * 100;
 });
 
 onMounted(async () => {

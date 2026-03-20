@@ -24,7 +24,7 @@ export function slottedColumns<K extends string, T>(
 ): DataTableColumns<T> {
   return columns.map((column) => {
     const key = (column as DataTableBaseColumn<T>).key;
-    if (typeof key == 'string') {
+    if (typeof key === 'string') {
       return {
         ...column,
         render: slottedRenderer(slots[`column-${key as K}`]),

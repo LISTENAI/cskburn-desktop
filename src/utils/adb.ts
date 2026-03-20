@@ -29,7 +29,7 @@ export async function listDevices(): Promise<IDevice[]> {
       return devices;
     }
 
-    if (state != 'device') {
+    if (state !== 'device') {
       return devices;
     }
 
@@ -109,7 +109,7 @@ export async function rebootToSystem(identifier: string): Promise<void> {
 export async function computeMd5(identifier: string, remote: string): Promise<string | undefined> {
   const output = await executeShell(identifier, ['md5sum', remote]);
   const [, md5sum, path] = output.match(/([a-fA-F0-9]{32})\s+(\S+)/) ?? [];
-  return md5sum && path == remote ? md5sum.toLowerCase() : undefined;
+  return md5sum && path === remote ? md5sum.toLowerCase() : undefined;
 }
 
 export async function fetchChipId(identifier: string): Promise<string | null> {

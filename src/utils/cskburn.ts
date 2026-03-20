@@ -68,9 +68,9 @@ export async function cskburn(
     function handleOutput(output: string) {
       opts?.onOutput?.(output);
       let match: RegExpMatchArray | null = null;
-      if (output == 'Waiting for device...') {
+      if (output === 'Waiting for device...') {
         opts?.onWaitingForDevice?.();
-      } else if (output == 'Entering update mode...') {
+      } else if (output === 'Entering update mode...') {
         opts?.onEnteringUpdateMode?.();
       } else if ((match = output.match(/^chip-id: (.+)$/))) {
         opts?.onChipId?.(match[1]);
@@ -87,9 +87,9 @@ export async function cskburn(
         opts?.onWrote?.(currentIndex);
       } else if ((match = output.match(/^md5 \(.+\): (.+)$/))) {
         opts?.onVerified?.(currentIndex, match[1]);
-      } else if (output == 'Resetting...') {
+      } else if (output === 'Resetting...') {
         opts?.onResetting?.();
-      } else if (output == 'Finished') {
+      } else if (output === 'Finished') {
         opts?.onFinished?.();
       } else if ((match = output.match(/^ERROR: (.+)$/))) {
         error = match[1];

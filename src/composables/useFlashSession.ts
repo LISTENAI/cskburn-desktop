@@ -27,9 +27,9 @@ export function useFlashSession(images: Ref<IFlashImage[]>) {
   let aborter: AbortController | undefined;
 
   const busyForFlash = computed(() =>
-    status.value == FlashStatus.CONNECTING ||
-    status.value == FlashStatus.FLASHING ||
-    status.value == FlashStatus.VERIFYING);
+    status.value === FlashStatus.CONNECTING ||
+    status.value === FlashStatus.FLASHING ||
+    status.value === FlashStatus.VERIFYING);
 
   function resetForFlash(): AbortSignal {
     progress.current = null;

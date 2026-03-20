@@ -16,13 +16,13 @@
               :available-adb-devices="availableAdbDevices" :disabled="busyForInfo || busyForFlash"
               :style="{ width: '400px' }" />
           </n-flex>
-          <template v-if="selectedPort?.type == 'adb' && selectedPort.state == 'DEVICE'">
+          <template v-if="selectedPort?.type === 'adb' && selectedPort.state === 'DEVICE'">
             <n-button secondary :disabled="busyForInfo || busyForFlash || rebootingToRecovery"
               @click="doAdbRebootToRecovery">
               进入 Recovery 模式
             </n-button>
           </template>
-          <n-flex v-else-if="selectedPort?.type == 'serial'" align="center">
+          <n-flex v-else-if="selectedPort?.type === 'serial'" align="center">
             <div>芯片:</div>
             <n-select v-model:value="selectedChip" placeholder="请选择芯片" :options="supportedChips"
               :disabled="busyForInfo || busyForFlash" :style="{ width: '8em' }" />
@@ -52,19 +52,19 @@
 
     <n-flex align="center" :wrap="false">
       <n-flex align="center" :style="{ flex: '1 1 auto', minWidth: '0' }">
-        <template v-if="status == FlashStatus.CONNECTING">
+        <template v-if="status === FlashStatus.CONNECTING">
           <n-spin size="small" />
         </template>
-        <template v-else-if="status == FlashStatus.FLASHING || status == FlashStatus.VERIFYING">
+        <template v-else-if="status === FlashStatus.FLASHING || status === FlashStatus.VERIFYING">
           <n-progress type="line" :percentage="progress.progress * 100" :show-indicator="false"
-            :processing="status == FlashStatus.VERIFYING" />
+            :processing="status === FlashStatus.VERIFYING" />
         </template>
-        <template v-else-if="status == FlashStatus.SUCCESS">
+        <template v-else-if="status === FlashStatus.SUCCESS">
           <n-text :class="$style.result" type="success">
             烧录成功
           </n-text>
         </template>
-        <template v-else-if="status == FlashStatus.ERROR">
+        <template v-else-if="status === FlashStatus.ERROR">
           <n-text :class="$style.result" type="error">
             <template v-if="failure">
               烧录异常：<selectable-text selectable>{{ failure }}</selectable-text>
@@ -209,22 +209,22 @@ const busyForInfo = ref(false);
 
 const readyToFlash = computed(() =>
   selectedPort.value != null &&
-  !(selectedPort.value.type == 'serial' && selectedChip.value == null) &&
-  !(selectedPort.value.type == 'adb' && selectedPort.value.state != 'RECOVERY') &&
+  !(selectedPort.value.type === 'serial' && selectedChip.value == null) &&
+  !(selectedPort.value.type === 'adb' && selectedPort.value.state !== 'RECOVERY') &&
   images.value.length > 0 &&
   !hasError.value);
 
 const readyToFetchInfo = computed(() =>
   selectedPort.value != null &&
-  !(selectedPort.value.type == 'serial' && selectedChip.value == null) &&
-  !(selectedPort.value.type == 'adb' && selectedPort.value.state != 'RECOVERY'));
+  !(selectedPort.value.type === 'serial' && selectedChip.value == null) &&
+  !(selectedPort.value.type === 'adb' && selectedPort.value.state !== 'RECOVERY'));
 
 const message = useMessage();
 
 async function fetchInfo(): Promise<void> {
-  if (selectedPort.value?.type == 'serial' && selectedChip.value != null) {
+  if (selectedPort.value?.type === 'serial' && selectedChip.value != null) {
     await fetchInfoFromSerial(selectedPort.value.path, selectedChip.value);
-  } else if (selectedPort.value?.type == 'adb' && selectedPort.value.state == 'RECOVERY') {
+  } else if (selectedPort.value?.type === 'adb' && selectedPort.value.state === 'RECOVERY') {
     await fetchInfoFromAdb(selectedPort.value.identifier);
   }
 }
@@ -295,7 +295,7 @@ const rebootingToRecovery = ref(false);
 let rebootToRecoveryTimeout: number | undefined;
 
 async function doAdbRebootToRecovery(): Promise<void> {
-  if (selectedPort.value?.type != 'adb') {
+  if (selectedPort.value?.type !== 'adb') {
     return;
   }
 
@@ -312,7 +312,7 @@ async function doAdbRebootToRecovery(): Promise<void> {
 
 watch(availableAdbDevices, (devices) => {
   if (rebootingToRecovery.value) {
-    const device = devices.find((d) => d.state == 'RECOVERY');
+    const device = devices.find((d) => d.state === 'RECOVERY');
     if (device) {
       rebootingToRecovery.value = false;
       clearTimeout(rebootToRecoveryTimeout);
@@ -332,7 +332,7 @@ watch(images, () => {
 });
 
 const lpkChip = computed(() => {
-  const lpk = images.value.find((img) => img.format == 'lpk');
+  const lpk = images.value.find((img) => img.format === 'lpk');
   return lpk ? normalizeModelName(lpk.file.chip) : null;
 });
 
@@ -359,7 +359,7 @@ const errors = computed(() => {
       const end = start + partition.file.size;
 
       for (const [otherIndex, other] of partitions.value.entries()) {
-        if (otherIndex == index) {
+        if (otherIndex === index) {
           continue;
         }
 
@@ -387,15 +387,15 @@ const hasError = computed(() => errors.value.some((error) => !!error));
 const outputShown = ref(false);
 
 async function startFlash(): Promise<void> {
-  if (images.value.length == 0) {
+  if (images.value.length === 0) {
     return;
   }
 
   const signal = resetForFlash();
 
-  if (selectedPort.value?.type == 'serial' && selectedChip.value != null) {
+  if (selectedPort.value?.type === 'serial' && selectedChip.value != null) {
     await startFlashOnSerial(selectedPort.value.path, selectedChip.value, signal);
-  } else if (selectedPort.value?.type == 'adb' && selectedPort.value.state == 'RECOVERY') {
+  } else if (selectedPort.value?.type === 'adb' && selectedPort.value.state === 'RECOVERY') {
     await startFlashOnAdb(selectedPort.value.identifier, signal);
   }
 }
@@ -489,8 +489,8 @@ async function startFlashOnAdb(identifier: string, signal: AbortSignal): Promise
       output.value.push(`- 设备端 MD5: ${remoteMd5}`);
       const localMd5 = await computeLocalMd5(file.path);
       output.value.push(`- 本地端 MD5: ${localMd5}`);
-      output.value.push(remoteMd5 == localMd5 ? '- 一致' : '- 不一致');
-      if (remoteMd5 != localMd5) {
+      output.value.push(remoteMd5 === localMd5 ? '- 一致' : '- 不一致');
+      if (remoteMd5 !== localMd5) {
         throw new Error(`分区 #${index + 1} 校验失败 (MD5 不一致)`);
       }
     }
@@ -531,9 +531,9 @@ bindProgressBar(() => {
 });
 
 watch(status, async (status) => {
-  if (status == FlashStatus.STOPPED || status == FlashStatus.SUCCESS) {
+  if (status === FlashStatus.STOPPED || status === FlashStatus.SUCCESS) {
     await getCurrentWindow().requestUserAttention(UserAttentionType.Informational);
-  } else if (status == FlashStatus.ERROR) {
+  } else if (status === FlashStatus.ERROR) {
     await getCurrentWindow().requestUserAttention(UserAttentionType.Critical);
   }
 });
