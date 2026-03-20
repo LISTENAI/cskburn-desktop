@@ -5,7 +5,7 @@
         <slot />
       </selectable-text>
     </n-element>
-    <template v-for="button in (props.buttons || [])">
+    <template v-for="(button, index) in (props.buttons || [])" :key="index">
       <n-tooltip>
         <template #trigger>
           <n-button :class="$style.button" size="small" quaternary circle @click="button.onClick">

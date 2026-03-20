@@ -19,7 +19,7 @@ export function useSettings<T, D extends T | undefined = T>(key: string, default
   });
 
   useListen(() => settings.onKeyChange(key, (value) => {
-    if (val.value != value) {
+    if (val.value !== value) {
       val.value = value as T;
     }
   }));

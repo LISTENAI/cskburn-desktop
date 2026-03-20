@@ -371,7 +371,7 @@ const errors = computed(() => {
         }
       }
 
-      if (start % 4096 != 0) {
+      if (start % 4096 !== 0) {
         return '地址未 4K 对齐';
       }
 

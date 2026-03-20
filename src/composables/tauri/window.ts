@@ -10,7 +10,7 @@ export function bindProgressBar(state: WatchSource<ProgressBarState>, window = g
 
 export function bindTitle(title: WatchSource<string | undefined>, window = getCurrentWindow()): void {
   watch(title, async (title) => {
-    if (title != undefined) {
+    if (title != null) {
       await window.setTitle(title);
     }
   }, { immediate: true });

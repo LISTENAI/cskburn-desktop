@@ -13,7 +13,7 @@ export function useIntervally<T>(interval: number, generateFn: () => T | Promise
   });
 
   onBeforeUnmount(() => {
-    if (typeof intervalId != 'undefined') {
+    if (typeof intervalId !== 'undefined') {
       clearInterval(intervalId);
     }
   });
