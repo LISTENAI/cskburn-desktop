@@ -2,6 +2,8 @@ import { Child, Command } from '@tauri-apps/plugin-shell';
 
 type UnwatchFn = () => void;
 
+const DEVICE_POLL_INTERVAL = 2_000;
+
 export async function checkVersion(): Promise<string> {
   const { stdout } = await Command.create('adb', ['version']).execute();
   const match = stdout.match(/Android Debug Bridge version (.+)/);
@@ -58,12 +60,29 @@ export async function watchDevices(cb: (devices: IDevice[]) => void): Promise<Un
     return () => { };
   }
 
-  const timer = setInterval(async () => {
-    const devices = await listDevices();
-    cb(devices);
-  }, 2000);
+  let stopped = false;
+  let timer: ReturnType<typeof setTimeout> | undefined;
 
-  return () => clearInterval(timer);
+  async function poll() {
+    if (stopped) return;
+    try {
+      const devices = await listDevices();
+      if (!stopped) cb(devices);
+    } catch (e) {
+      console.warn('Failed to list ADB devices:', e);
+      if (!stopped) cb([]);
+    }
+    if (!stopped) {
+      timer = setTimeout(poll, DEVICE_POLL_INTERVAL);
+    }
+  }
+
+  timer = setTimeout(poll, DEVICE_POLL_INTERVAL);
+
+  return () => {
+    stopped = true;
+    clearTimeout(timer);
+  };
 }
 
 async function executeShell(identifier: string, commands: string[]): Promise<string> {
