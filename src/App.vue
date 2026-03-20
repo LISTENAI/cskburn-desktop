@@ -157,12 +157,12 @@ import { cleanUpTmpFiles, computeMd5 as computeLocalMd5 } from '@/utils/file';
 
 import { busyOn } from '@/composables/busyOn';
 import { useAvailableAdbDevices, useAvailableSerialPorts } from '@/composables/devices';
-import { FlashStatus, useFlashProgress } from '@/composables/progress';
+import { FlashStatus } from '@/composables/progress';
 import { useHexImage, usePartitions } from '@/composables/partitions';
+import { useFlashSession } from '@/composables/useFlashSession';
 import { useListen } from '@/composables/tauri/useListen';
 import { useAppName, useAppVersion } from '@/composables/tauri/app';
 import { bindProgressBar, bindTitle } from '@/composables/tauri/window';
-import { useLogWriter } from '@/composables/logWriter';
 import { useSettings } from '@/composables/tauri/settings';
 
 import AppSettings from '@/components/sections/AppSettings.vue';
@@ -187,20 +187,25 @@ const selectedPort = ref<IPortSelection | null>(null);
 const selectedChip = ref<string | null>(null);
 const images = ref<IFlashImage[]>([]);
 
-const chipId = ref<string | null>(null);
-const flashInfo = ref<{ id?: string, size: number } | null>(null);
+const {
+  status,
+  failure,
+  output,
+  chipId,
+  flashInfo,
+  progress,
+  busyForFlash,
+  logFileName,
+  resetForFlash,
+  resetForInfo,
+  stopFlash,
+  handleFlashSuccess,
+  handleFlashError,
+} = useFlashSession(images);
 
 const flashSize = computed(() => flashInfo.value?.size ?? null);
 
-const status = ref<FlashStatus | null>(null);
-const failure = ref<string | null>(null);
-const progress = useFlashProgress(images, status);
-
 const busyForInfo = ref(false);
-const busyForFlash = computed(() =>
-  status.value == FlashStatus.CONNECTING ||
-  status.value == FlashStatus.FLASHING ||
-  status.value == FlashStatus.VERIFYING);
 
 const readyToFlash = computed(() =>
   selectedPort.value != null &&
@@ -214,8 +219,6 @@ const readyToFetchInfo = computed(() =>
   !(selectedPort.value.type == 'serial' && selectedChip.value == null) &&
   !(selectedPort.value.type == 'adb' && selectedPort.value.state != 'RECOVERY'));
 
-const { logFileName, appendLog } = useLogWriter();
-
 const message = useMessage();
 
 async function fetchInfo(): Promise<void> {
@@ -227,9 +230,7 @@ async function fetchInfo(): Promise<void> {
 }
 
 async function fetchInfoFromSerial(path: string, chip: string): Promise<void> {
-  chipId.value = null;
-  flashInfo.value = null;
-  output.value.splice(0);
+  resetForInfo();
   output.value.push(`* port: ${path}`);
   output.value.push(`* baud: ${baudrate.value}`);
   output.value.push(`* chip: ${chip}`);
@@ -266,9 +267,7 @@ async function fetchInfoFromSerial(path: string, chip: string): Promise<void> {
 }
 
 async function fetchInfoFromAdb(identifier: string): Promise<void> {
-  chipId.value = null;
-  flashInfo.value = null;
-  output.value.splice(0);
+  resetForInfo();
 
   try {
     await busyOn((async () => {
@@ -385,26 +384,19 @@ const errors = computed(() => {
 
 const hasError = computed(() => errors.value.some((error) => !!error));
 
-const output = ref<string[]>([]);
 const outputShown = ref(false);
-
-let aborter: AbortController | undefined;
 
 async function startFlash(): Promise<void> {
   if (images.value.length == 0) {
     return;
   }
 
-  aborter = new AbortController();
+  const signal = resetForFlash();
 
-  try {
-    if (selectedPort.value?.type == 'serial' && selectedChip.value != null) {
-      await startFlashOnSerial(selectedPort.value.path, selectedChip.value, aborter.signal);
-    } else if (selectedPort.value?.type == 'adb' && selectedPort.value.state == 'RECOVERY') {
-      await startFlashOnAdb(selectedPort.value.identifier, aborter.signal);
-    }
-  } finally {
-    aborter = undefined;
+  if (selectedPort.value?.type == 'serial' && selectedChip.value != null) {
+    await startFlashOnSerial(selectedPort.value.path, selectedChip.value, signal);
+  } else if (selectedPort.value?.type == 'adb' && selectedPort.value.state == 'RECOVERY') {
+    await startFlashOnAdb(selectedPort.value.identifier, signal);
   }
 }
 
@@ -418,8 +410,6 @@ async function startFlashOnSerial(path: string, chip: string, signal: AbortSigna
     }
   }
 
-  progress.current = null;
-  output.value.splice(0);
   output.value.push(`* port: ${path}`);
   output.value.push(`* baud: ${baudrate.value}`);
   output.value.push(`* chip: ${chip}`);
@@ -450,29 +440,9 @@ async function startFlashOnSerial(path: string, chip: string, signal: AbortSigna
       },
     });
 
-    status.value = FlashStatus.SUCCESS;
-    output.value.push('[烧录成功]');
-
-    await appendLog(chipId.value ?? 'UNKNOWN', 'SUCCESS');
+    await handleFlashSuccess();
   } catch (e) {
-    console.error(e);
-    if (e instanceof CSKBurnTerminatedError) {
-      if (signal.aborted) {
-        output.value.push('[烧录停止]');
-      } else {
-        status.value = FlashStatus.ERROR;
-        output.value.push(`[烧录失败: 终止信号 ${e.signal}]`);
-      }
-    } else if (e instanceof CSKBurnUnnormalExitError) {
-      status.value = FlashStatus.ERROR;
-      failure.value = e.message;
-      output.value.push(`[烧录失败: 退出码 ${e.code}]`);
-    } else {
-      status.value = FlashStatus.ERROR;
-      output.value.push(`[烧录失败: 发生异常 ${e}]`);
-    }
-
-    await appendLog(chipId.value ?? 'UNKNOWN', 'FAILURE');
+    await handleFlashError(e, signal, CSKBurnTerminatedError, CSKBurnUnnormalExitError);
   }
 }
 
@@ -481,9 +451,6 @@ async function startFlashOnAdb(identifier: string, signal: AbortSignal): Promise
     message.error('ADB 模式暂不支持烧录 HEX 文件');
     return;
   }
-
-  progress.current = null;
-  output.value.splice(0);
 
   output.value.push(`设备: ${identifier}`);
 
@@ -531,36 +498,10 @@ async function startFlashOnAdb(identifier: string, signal: AbortSignal): Promise
     output.value.push('[正在复位设备]');
     await rebootToSystem(identifier);
 
-    status.value = FlashStatus.SUCCESS;
-    output.value.push('[烧录成功]');
-
-    await appendLog(chipId.value ?? 'UNKNOWN', 'SUCCESS');
+    await handleFlashSuccess();
   } catch (e) {
-    console.error(e);
-
-    if (e instanceof ADBTransferTerminatedError) {
-      if (signal.aborted) {
-        output.value.push('[烧录停止]');
-      } else {
-        status.value = FlashStatus.ERROR;
-        output.value.push(`[烧录失败: 终止信号 ${e.signal}]`);
-      }
-    } else if (e instanceof ADBTransferUnnormalExitError) {
-      status.value = FlashStatus.ERROR;
-      failure.value = e.message;
-      output.value.push(`[烧录失败: 退出码 ${e.code}]`);
-    } else {
-      status.value = FlashStatus.ERROR;
-      output.value.push(`[烧录失败: 发生异常 ${e}]`);
-    }
-
-    await appendLog(chipId.value ?? 'UNKNOWN', 'FAILURE');
+    await handleFlashError(e, signal, ADBTransferTerminatedError, ADBTransferUnnormalExitError);
   }
-}
-
-function stopFlash(): void {
-  status.value = FlashStatus.STOPPED;
-  aborter?.abort();
 }
 
 bindProgressBar(() => {
