@@ -161,8 +161,7 @@ import { FlashStatus } from '@/composables/progress';
 import { useHexImage, usePartitions } from '@/composables/partitions';
 import { useFlashSession } from '@/composables/useFlashSession';
 import { useListen } from '@/composables/tauri/useListen';
-import { useAppName, useAppVersion } from '@/composables/tauri/app';
-import { bindProgressBar, bindTitle } from '@/composables/tauri/window';
+import { bindProgressBar } from '@/composables/tauri/window';
 import { useSettings } from '@/composables/tauri/settings';
 
 import AppSettings from '@/components/sections/AppSettings.vue';
@@ -195,7 +194,6 @@ const {
   flashInfo,
   progress,
   busyForFlash,
-  logFileName,
   resetForFlash,
   resetForInfo,
   stopFlash,
@@ -556,20 +554,6 @@ useListen(() => getCurrentWindow().onCloseRequested(async (event) => {
 }));
 
 const settingsShown = ref(false);
-
-const appName = useAppName();
-const appVersion = useAppVersion();
-bindTitle(() => {
-  if (!appName.value || !appVersion.value) {
-    return undefined;
-  }
-
-  if (logFileName.value) {
-    return `${appName.value} - v${appVersion.value} (${logFileName.value})`;
-  } else {
-    return `${appName.value} - v${appVersion.value}`;
-  }
-});
 </script>
 
 <style lang="scss" module>

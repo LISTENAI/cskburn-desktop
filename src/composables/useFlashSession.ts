@@ -3,7 +3,6 @@ import { computed, ref, type Ref } from 'vue';
 import type { IFlashImage } from '@/utils/images';
 
 import { FlashStatus, useFlashProgress } from './progress';
-import { useLogWriter } from './logWriter';
 
 interface ITerminatedError {
   signal: number;
@@ -22,7 +21,6 @@ export function useFlashSession(images: Ref<IFlashImage[]>) {
   const flashInfo = ref<{ id?: string; size: number } | null>(null);
 
   const progress = useFlashProgress(images, status);
-  const { logFileName, appendLog } = useLogWriter();
 
   let aborter: AbortController | undefined;
 
@@ -54,7 +52,6 @@ export function useFlashSession(images: Ref<IFlashImage[]>) {
     status.value = FlashStatus.SUCCESS;
     output.value.push('[烧录成功]');
     aborter = undefined;
-    await appendLog(chipId.value ?? 'UNKNOWN', 'SUCCESS');
   }
 
   async function handleFlashError(
@@ -81,8 +78,6 @@ export function useFlashSession(images: Ref<IFlashImage[]>) {
       status.value = FlashStatus.ERROR;
       output.value.push(`[烧录失败: 发生异常 ${e}]`);
     }
-
-    await appendLog(chipId.value ?? 'UNKNOWN', 'FAILURE');
   }
 
   return {
@@ -93,8 +88,6 @@ export function useFlashSession(images: Ref<IFlashImage[]>) {
     flashInfo,
     progress,
     busyForFlash,
-    logFileName,
-    appendLog,
     resetForFlash,
     resetForInfo,
     stopFlash,
