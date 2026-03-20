@@ -290,6 +290,8 @@ async function fetchInfoFromAdb(identifier: string): Promise<void> {
   }
 }
 
+const REBOOT_TO_RECOVERY_TIMEOUT = 10_000;
+
 const rebootingToRecovery = ref(false);
 let rebootToRecoveryTimeout: number | undefined;
 
@@ -302,7 +304,7 @@ async function doAdbRebootToRecovery(): Promise<void> {
   rebootToRecoveryTimeout = setTimeout(() => {
     rebootingToRecovery.value = false;
     message.error('进入 Recovery 模式超时');
-  }, 10_000);
+  }, REBOOT_TO_RECOVERY_TIMEOUT);
 
   try {
     await rebootToRecovery(selectedPort.value.identifier);
@@ -395,10 +397,14 @@ async function startFlash(): Promise<void> {
 
   aborter = new AbortController();
 
-  if (selectedPort.value?.type == 'serial' && selectedChip.value != null) {
-    await startFlashOnSerial(selectedPort.value.path, selectedChip.value, aborter.signal);
-  } else if (selectedPort.value?.type == 'adb' && selectedPort.value.state == 'RECOVERY') {
-    await startFlashOnAdb(selectedPort.value.identifier, aborter.signal);
+  try {
+    if (selectedPort.value?.type == 'serial' && selectedChip.value != null) {
+      await startFlashOnSerial(selectedPort.value.path, selectedChip.value, aborter.signal);
+    } else if (selectedPort.value?.type == 'adb' && selectedPort.value.state == 'RECOVERY') {
+      await startFlashOnAdb(selectedPort.value.identifier, aborter.signal);
+    }
+  } finally {
+    aborter = undefined;
   }
 }
 
@@ -451,9 +457,7 @@ async function startFlashOnSerial(path: string, chip: string, signal: AbortSigna
   } catch (e) {
     console.error(e);
     if (e instanceof CSKBurnTerminatedError) {
-      // @ts-ignore: changed elsewhere
-      const stoppedManually = status.value == FlashStatus.STOPPED;
-      if (stoppedManually) {
+      if (signal.aborted) {
         output.value.push('[烧录停止]');
       } else {
         status.value = FlashStatus.ERROR;
@@ -535,9 +539,7 @@ async function startFlashOnAdb(identifier: string, signal: AbortSignal): Promise
     console.error(e);
 
     if (e instanceof ADBTransferTerminatedError) {
-      // @ts-ignore: changed elsewhere
-      const stoppedManually = status.value == FlashStatus.STOPPED;
-      if (stoppedManually) {
+      if (signal.aborted) {
         output.value.push('[烧录停止]');
       } else {
         status.value = FlashStatus.ERROR;
