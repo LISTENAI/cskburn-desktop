@@ -1,11 +1,20 @@
 import { Child, Command } from '@tauri-apps/plugin-shell';
+import { type } from '@tauri-apps/plugin-os';
 
 type UnwatchFn = () => void;
 
 const DEVICE_POLL_INTERVAL = 2_000;
 
+function adb(args: string[]): Command<string> {
+  if (type() === 'macos') {
+    return Command.create('adb-sh', ['-c', ['adb', ...args].join(' ')]);
+  } else {
+    return Command.create('adb', args);
+  }
+}
+
 export async function checkVersion(): Promise<string> {
-  const { stdout } = await Command.create('adb', ['version']).execute();
+  const { stdout } = await adb(['version']).execute();
   const match = stdout.match(/Android Debug Bridge version (.+)/);
   return match ? match[1] : 'unknown';
 }
@@ -22,7 +31,7 @@ export type IDeviceState =
   'RECOVERY';
 
 export async function listDevices(): Promise<IDevice[]> {
-  const { stdout } = await Command.create('adb', ['devices', '-l']).execute();
+  const { stdout } = await adb(['devices', '-l']).execute();
   return stdout.split('\n').reduce<IDevice[]>((devices, line) => {
     const [, identifier, state, props] = line.trim().match(/^(\S+)\s+(\S+)\s(.+)$/) ?? [];
     if (!identifier || !state || !props) {
@@ -86,7 +95,7 @@ export async function watchDevices(cb: (devices: IDevice[]) => void): Promise<Un
 }
 
 async function executeShell(identifier: string, commands: string[]): Promise<string> {
-  const { stdout } = await Command.create('adb', ['-s', identifier, 'shell', ...commands]).execute();
+  const { stdout } = await adb(['-s', identifier, 'shell', ...commands]).execute();
   return stdout;
 }
 
@@ -150,7 +159,7 @@ export function pushFile(
 ): Promise<void> {
   const { promise, resolve, reject } = Promise.withResolvers<void>();
 
-  const command = Command.create('adb', ['-s', identifier, 'push', local, remote]);
+  const command = adb(['-s', identifier, 'push', local, remote]);
 
   function handleOutput(output: string) {
     opts?.onOutput?.(output);

@@ -47,6 +47,11 @@
           "name": "adb",
           "cmd": "adb",
           "args": true
+        },
+        {
+          "name": "adb-sh",
+          "cmd": "/bin/sh",
+          "args": true
         }
       ]
     },
@@ -61,6 +66,11 @@
         {
           "name": "adb",
           "cmd": "adb",
+          "args": true
+        },
+        {
+          "name": "adb-sh",
+          "cmd": "/bin/sh",
           "args": true
         }
       ]
