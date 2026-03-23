@@ -1,6 +1,6 @@
 use std::sync::Mutex;
 
-use serialport::available_ports;
+use serialport::{available_ports, SerialPortType};
 use tauri::{ipc::Channel, Manager, Resource, ResourceId, Runtime, Webview};
 
 use crate::serialport_watcher::{SerialPortEventHandler, SerialPortWatcher, SerialPortWatcherImpl};
@@ -10,14 +10,16 @@ pub fn list_ports() -> Vec<String> {
     match available_ports() {
         Ok(ports) => ports
             .into_iter()
-            .map(|p| p.port_name)
-            .filter(|p| {
-                if cfg!(target_os = "linux") {
-                    p.starts_with("/dev/ttyUSB") || p.starts_with("/dev/ttyACM")
-                } else if cfg!(target_os = "macos") {
-                    p.starts_with("/dev/cu.usb")
+            .filter_map(|p| {
+                if let SerialPortType::UsbPort(_) = p.port_type {
+                    if cfg!(target_os = "macos") {
+                        if !p.port_name.starts_with("/dev/cu.") {
+                            return None;
+                        }
+                    }
+                    Some(p.port_name)
                 } else {
-                    true
+                    None
                 }
             })
             .collect(),
