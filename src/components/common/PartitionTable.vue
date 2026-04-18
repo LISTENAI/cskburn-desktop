@@ -18,13 +18,18 @@ const props = defineProps<{
   partitions: T[];
 }>();
 
-type Keys = 'index' | 'name' | 'addr' | 'modified-at' | 'size' | 'progress' | 'actions';
+type Keys = 'enabled' | 'index' | 'name' | 'addr' | 'modified-at' | 'size' | 'progress' | 'actions';
 
 const slots = defineSlots<{
   footer?: Component;
 } & DataTableColumnSlots<Keys, T>>();
 
 const columns: DataTableColumns<T> = [
+  {
+    title: '',
+    key: 'enabled',
+    width: '3em',
+  },
   {
     title: '#',
     key: 'index',

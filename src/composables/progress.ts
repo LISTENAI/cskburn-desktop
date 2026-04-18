@@ -36,7 +36,10 @@ export function useFlashProgress(images: Ref<IFlashImage[]>, status: Ref<FlashSt
       return null;
     }
 
-    return partitions.value.map((_, index) => {
+    return partitions.value.map((part, index) => {
+      if (!part.enabled) {
+        return null;
+      }
       if (current.value == null || current.value.index < index) {
         return null;
       } else if (current.value.index === index) {
@@ -65,8 +68,15 @@ export function useFlashProgress(images: Ref<IFlashImage[]>, status: Ref<FlashSt
       if (index >= partitions.value.length) {
         return 0;
       }
-      const total = sum(partitions.value, (part) => part.file.size);
-      const wrote = sum(partitions.value.slice(0, index), (part) => part.file.size);
+      const enabled = partitions.value.filter((part) => part.enabled);
+      const total = sum(enabled, (part) => part.file.size);
+      if (total === 0) {
+        return 0;
+      }
+      const wrote = sum(
+        partitions.value.slice(0, index).filter((part) => part.enabled),
+        (part) => part.file.size,
+      );
       const writing = partitions.value[index].file.size * (current.value.progress ?? 0);
       return (wrote + writing) / total;
     }

@@ -16,6 +16,7 @@ export async function readLpk(path: string): Promise<ILpkInfo> {
     partitions: partitions.map((part) => ({
       addr: part.addr,
       file: plainToInstance(TmpFile, { ...part.file, containerPath: path }),
+      enabled: true,
     })),
   };
 }

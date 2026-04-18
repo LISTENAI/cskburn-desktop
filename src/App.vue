@@ -210,6 +210,7 @@ const readyToFlash = computed(() =>
   !(selectedPort.value.type === 'serial' && selectedChip.value == null) &&
   !(selectedPort.value.type === 'adb' && selectedPort.value.state !== 'RECOVERY') &&
   images.value.length > 0 &&
+  (hexImage.value != null || partitions.value.some((p) => p.enabled)) &&
   !hasError.value);
 
 const readyToFetchInfo = computed(() =>
@@ -353,11 +354,15 @@ const errors = computed(() => {
     }
   } else {
     return partitions.value.map((partition, index) => {
+      if (!partition.enabled) {
+        return undefined;
+      }
+
       const start = partition.addr;
       const end = start + partition.file.size;
 
       for (const [otherIndex, other] of partitions.value.entries()) {
-        if (otherIndex === index) {
+        if (otherIndex === index || !other.enabled) {
           continue;
         }
 
@@ -400,10 +405,13 @@ async function startFlash(): Promise<void> {
 
 async function startFlashOnSerial(path: string, chip: string, signal: AbortSignal): Promise<void> {
   const args = ['--verify-all'];
+  const enabledIndices: number[] = [];
   if (hexImage.value) {
     args.push(hexImage.value.file.path);
   } else {
-    for (const partition of partitions.value) {
+    for (const [index, partition] of partitions.value.entries()) {
+      if (!partition.enabled) continue;
+      enabledIndices.push(index);
       args.push(partition.addr.toString(), partition.file.path);
     }
   }
@@ -426,15 +434,15 @@ async function startFlashOnSerial(path: string, chip: string, signal: AbortSigna
         flashInfo.value = { id, size };
       },
       onPartition(index, _total, _addr) {
-        progress.current = { index, progress: 0 };
+        progress.current = { index: enabledIndices[index] ?? index, progress: 0 };
         status.value = FlashStatus.FLASHING;
       },
       onWrote(index) {
-        progress.current = { index, progress: 1 };
+        progress.current = { index: enabledIndices[index] ?? index, progress: 1 };
         status.value = FlashStatus.VERIFYING;
       },
       onProgress(index, current) {
-        progress.current = { index, progress: current };
+        progress.current = { index: enabledIndices[index] ?? index, progress: current };
       },
     });
 
@@ -460,7 +468,9 @@ async function startFlashOnAdb(identifier: string, signal: AbortSignal): Promise
     const size = await fetchFlashSize(identifier);
     flashInfo.value = size ? { size } : null;
 
-    for (const [index, { addr, file }] of partitions.value.entries()) {
+    for (const [index, partition] of partitions.value.entries()) {
+      if (!partition.enabled) continue;
+      const { addr, file } = partition;
       output.value.push(`[正在烧录分区 #${index + 1}]`);
 
       progress.current = { index, progress: null };

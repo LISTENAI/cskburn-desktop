@@ -84,6 +84,12 @@
             </template>
           </n-button>
         </template>
+        <template #column-enabled="{ index }">
+          <field-base>
+            <n-checkbox :checked="partitions[index].enabled" :style="{ marginLeft: '8px' }"
+              @update:checked="(val: boolean) => partitions[index].enabled = val" :disabled="props.busy" />
+          </field-base>
+        </template>
         <template #column-index="{ index }">
           <field-base>{{ index + 1 }}</field-base>
         </template>
@@ -105,7 +111,10 @@
           </field-base>
         </template>
         <template #column-progress="{ index }">
-          <template v-if="!!props.errors[index]">
+          <template v-if="!partitions[index].enabled">
+            <n-text depth="3">已跳过</n-text>
+          </template>
+          <template v-else-if="!!props.errors[index]">
             <n-popover>
               <template #trigger>
                 <n-button quaternary circle type="error" size="small">
@@ -177,6 +186,7 @@
 import { computed, ref } from 'vue';
 import {
   NButton,
+  NCheckbox,
   NElement,
   NFlex,
   NIcon,
@@ -263,6 +273,8 @@ const partitions = computed<IPartitionRecord[]>(() => images.value.flatMap((imag
       return {
         get addr() { return image.addr },
         set addr(val: number) { image.addr = val },
+        get enabled() { return image.enabled ?? true },
+        set enabled(val: boolean) { image.enabled = val },
         file: image.file,
         remove: async () => {
           images.value.splice(imageIndex, 1);
@@ -273,6 +285,8 @@ const partitions = computed<IPartitionRecord[]>(() => images.value.flatMap((imag
       return image.file.partitions.map((part, partIndex) => ({
         get addr() { return part.addr },
         set addr(val: number) { part.addr = val },
+        get enabled() { return part.enabled },
+        set enabled(val: boolean) { part.enabled = val },
         file: part.file,
         remove: async () => {
           image.file.partitions.splice(partIndex, 1);

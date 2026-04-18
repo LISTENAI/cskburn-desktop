@@ -18,6 +18,7 @@ export type IFlashImage =
 export interface IPartition {
   addr: number;
   file: IFileRef;
+  enabled: boolean;
 }
 
 export async function readImages(paths: string[]): Promise<IFlashImage[]> {
@@ -45,6 +46,7 @@ export async function readImages(paths: string[]): Promise<IFlashImage[]> {
         format: 'bin',
         addr: 0,
         file: await LocalFile.from(path),
+        enabled: true,
       };
     }
   });
