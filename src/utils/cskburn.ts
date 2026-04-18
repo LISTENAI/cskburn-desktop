@@ -33,7 +33,11 @@ export class CSKBurnTerminatedError extends Error {
 }
 
 export class CSKBurnUnnormalExitError extends Error {
-  constructor(message: string | undefined, readonly code: number) {
+  constructor(
+    message: string | undefined,
+    readonly code: number,
+    readonly errorCode: string | null = null,
+  ) {
     super(message);
     this.name = 'CSKBurnUnnormalExitError';
   }
@@ -64,6 +68,7 @@ export async function cskburn(
 
     let currentIndex = 0;
     let error: string | undefined;
+    let errorCode: string | null = null;
 
     function handleOutput(output: string) {
       opts?.onOutput?.(output);
@@ -91,8 +96,9 @@ export async function cskburn(
         opts?.onResetting?.();
       } else if (output === 'Finished') {
         opts?.onFinished?.();
-      } else if ((match = output.match(/^ERROR: (.+)$/))) {
-        error = match[1];
+      } else if ((match = output.match(/^ERROR(?:\s+\[([^\]]+)\])?:\s+(.+)$/))) {
+        errorCode = match[1] ?? null;
+        error = match[2];
       }
     }
 
@@ -113,7 +119,7 @@ export async function cskburn(
       if (signal != null) {
         reject(new CSKBurnTerminatedError(signal));
       } else if (code !== 0) {
-        reject(new CSKBurnUnnormalExitError(error, code ?? -1));
+        reject(new CSKBurnUnnormalExitError(error, code ?? -1, errorCode));
       } else {
         resolve({ code, signal, output: outputs.join('') })
       }

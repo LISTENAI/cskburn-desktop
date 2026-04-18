@@ -6,6 +6,7 @@
   }">
     <app-settings v-model:show="settingsShown" />
     <auto-updater />
+    <error-dialog v-model:show="errorDialogShown" :failure :header-title="errorDialogTitle" />
 
     <n-spin :show="busyForInfo || rebootingToRecovery" :style="{ width: 'fit-content' }">
       <n-flex vertical>
@@ -65,14 +66,14 @@
           </n-text>
         </template>
         <template v-else-if="status === FlashStatus.ERROR">
-          <n-text :class="$style.result" type="error">
-            <template v-if="failure">
-              烧录异常：<selectable-text selectable>{{ failure }}</selectable-text>
+          <n-button text :class="$style.result" type="error" :focusable="false" @click="openErrorDialog">
+            <template v-if="failure?.code">
+              烧录异常 [{{ failure.code }}]
             </template>
             <template v-else>
               烧录异常
             </template>
-          </n-text>
+          </n-button>
         </template>
       </n-flex>
 
@@ -166,6 +167,7 @@ import { useSettings } from '@/composables/tauri/settings';
 
 import AppSettings from '@/components/sections/AppSettings.vue';
 import AutoUpdater from '@/components/sections/AutoUpdater.vue';
+import ErrorDialog from '@/components/sections/ErrorDialog.vue';
 import PortSelector, { type IPortSelection } from '@/components/sections/PortSelector.vue';
 import PartitionView from '@/components/sections/PartitionView.vue';
 import LogView from '@/components/sections/LogView.vue';
@@ -250,18 +252,22 @@ async function fetchInfoFromSerial(path: string, chip: string): Promise<void> {
     output.value.push('[获取信息成功]');
   } catch (e) {
     console.error(e);
-    message.error('获取信息失败');
     if (e instanceof CSKBurnTerminatedError) {
+      failure.value = { code: null, message: `烧录进程被终止 (信号 ${e.signal})` };
       output.value.push(`[获取信息失败: 终止信号 ${e.signal}]`);
     } else if (e instanceof CSKBurnUnnormalExitError) {
-      if (e.message) {
-        output.value.push(`[获取信息失败: ${e.message}]`);
-      } else {
-        output.value.push(`[获取信息失败: 退出码 ${e.code}]`);
-      }
+      failure.value = {
+        code: e.errorCode ?? null,
+        message: e.message || `烧录进程异常退出 (退出码 ${e.code})`,
+      };
+      const tag = e.errorCode ? `[${e.errorCode}] ` : '';
+      output.value.push(`[获取信息失败: ${tag}${e.message || `退出码 ${e.code}`}]`);
     } else {
+      failure.value = { code: null, message: `${e}` };
       output.value.push(`[获取信息失败: 发生异常 ${e}]`);
     }
+    errorDialogTitle.value = '获取信息失败';
+    errorDialogShown.value = true;
   }
 }
 
@@ -328,6 +334,22 @@ watch(images, () => {
   progress.current = null;
   status.value = null;
   failure.value = null;
+});
+
+const errorDialogShown = ref(false);
+const errorDialogTitle = ref('烧录失败');
+
+function openErrorDialog(): void {
+  if (failure.value) {
+    errorDialogShown.value = true;
+  }
+}
+
+watch(failure, (failure) => {
+  if (failure) {
+    errorDialogTitle.value = '烧录失败';
+    errorDialogShown.value = true;
+  }
 });
 
 const lpkChip = computed(() => {
