@@ -7,6 +7,8 @@
     <app-settings v-model:show="settingsShown" />
     <auto-updater />
     <error-dialog v-model:show="errorDialogShown" :failure :output :header-title="errorDialogTitle" />
+    <zero-address-confirm :show="zeroConfirmShown" @continue="() => resolveZeroConfirm('continue')"
+      @skip="() => resolveZeroConfirm('skip')" @cancel="() => resolveZeroConfirm('cancel')" />
 
     <n-spin :show="busyForInfo || rebootingToRecovery" :style="{ width: 'fit-content' }">
       <n-flex vertical>
@@ -47,7 +49,8 @@
       </n-flex>
     </n-spin>
 
-    <partition-view v-model:images="images" :busy="busyForFlash" :progress :errors :style="{ flex: '1 1 auto' }" />
+    <partition-view v-model:images="images" :busy="busyForFlash" :progress :errors :is-adb="isAdbPort"
+      :style="{ flex: '1 1 auto' }" />
 
     <log-view v-if="outputShown" :logs="output.join('\n')" :style="{ height: '200px' }" />
 
@@ -171,6 +174,7 @@ import ErrorDialog from '@/components/sections/ErrorDialog.vue';
 import PortSelector, { type IPortSelection } from '@/components/sections/PortSelector.vue';
 import PartitionView from '@/components/sections/PartitionView.vue';
 import LogView from '@/components/sections/LogView.vue';
+import ZeroAddressConfirm from '@/components/sections/ZeroAddressConfirm.vue';
 
 import SelectableText from '@/components/common/SelectableText.vue';
 
@@ -187,6 +191,8 @@ const supportedChips: SelectOption[] = MODELS.map((model) => ({
 const selectedPort = ref<IPortSelection | null>(null);
 const selectedChip = ref<string | null>(null);
 const images = ref<IFlashImage[]>([]);
+
+const isAdbPort = computed(() => selectedPort.value?.type === 'adb');
 
 const {
   status,
@@ -411,9 +417,58 @@ const hasError = computed(() => errors.value.some((error) => !!error));
 
 const outputShown = ref(false);
 
+type ZeroConfirmAction = 'continue' | 'skip' | 'cancel';
+
+const zeroConfirmShown = ref(false);
+let zeroConfirmResolve: ((action: ZeroConfirmAction) => void) | null = null;
+
+function promptZeroAddress(): Promise<ZeroConfirmAction> {
+  zeroConfirmShown.value = true;
+  return new Promise((resolve) => {
+    zeroConfirmResolve = resolve;
+  });
+}
+
+function resolveZeroConfirm(action: ZeroConfirmAction): void {
+  zeroConfirmShown.value = false;
+  const resolve = zeroConfirmResolve;
+  zeroConfirmResolve = null;
+  resolve?.(action);
+}
+
+function disableZeroAddressPartitions(): void {
+  for (const image of images.value) {
+    if (image.format === 'bin' && image.addr === 0) {
+      image.enabled = false;
+    } else if (image.format === 'lpk') {
+      for (const part of image.file.partitions) {
+        if (part.addr === 0) {
+          part.enabled = false;
+        }
+      }
+    }
+  }
+}
+
 async function startFlash(): Promise<void> {
   if (images.value.length === 0) {
     return;
+  }
+
+  if (isAdbPort.value && !hexImage.value) {
+    const zeroEnabled = partitions.value.some((p) => p.enabled && p.addr === 0);
+    if (zeroEnabled) {
+      const action = await promptZeroAddress();
+      if (action === 'cancel') {
+        return;
+      }
+      if (action === 'skip') {
+        disableZeroAddressPartitions();
+        if (!partitions.value.some((p) => p.enabled)) {
+          return;
+        }
+      }
+    }
   }
 
   const signal = resetForFlash();

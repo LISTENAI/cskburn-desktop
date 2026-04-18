@@ -231,6 +231,7 @@ const props = defineProps<{
   busy: boolean;
   progress: IFlashProgress;
   errors: (string | undefined)[];
+  isAdb?: boolean;
 }>();
 
 const message = useMessage();
@@ -239,6 +240,17 @@ const parsing = ref(false);
 async function handleFiles(files: string[]) {
   try {
     const parsed = await busyOn(readImages(files), parsing);
+    if (props.isAdb) {
+      for (const image of parsed) {
+        if (image.format === 'lpk') {
+          for (const part of image.file.partitions) {
+            if (part.addr === 0) {
+              part.enabled = false;
+            }
+          }
+        }
+      }
+    }
     const openedHexImage = images.value.find((image) => image.format === 'hex');
     const pendingHexImage = parsed.find((image) => image.format === 'hex');
     if (pendingHexImage) {
