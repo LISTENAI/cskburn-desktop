@@ -6,6 +6,8 @@ pub enum Error {
     Io(#[from] std::io::Error),
     #[error("Invalid LPK: {0}")]
     InvalidLpk(String),
+    #[error("Invalid HEX: {0}")]
+    InvalidHex(String),
 }
 
 impl Serialize for Error {

@@ -11,7 +11,11 @@
       </template>
 
       <n-flex vertical :size="12">
-        <div>
+        <div v-if="props.mode === 'hex'">
+          检测到 HEX 中存在位于 <strong>0x0</strong> 地址的 section。
+          在 ADB 模式下覆盖该地址可能影响设备以 Recovery 模式启动。
+        </div>
+        <div v-else>
           检测到已启用位于 <strong>0x0</strong> 地址的分区。
           在 ADB 模式下覆盖该分区可能影响设备以 Recovery 模式启动。
           默认将跳过 0x0 分区继续烧录其余分区。
@@ -29,8 +33,13 @@
       <template #footer>
         <n-flex justify="end">
           <n-button secondary @click="emit('cancel')">终止烧录</n-button>
-          <n-button v-if="burnZero" type="error" @click="emit('continue')">烧录全部</n-button>
-          <n-button v-else type="success" @click="emit('skip')">跳过 0x0 地址烧录</n-button>
+          <template v-if="props.mode === 'hex'">
+            <n-button type="error" :disabled="!burnZero" @click="emit('continue')">烧录全部</n-button>
+          </template>
+          <template v-else>
+            <n-button v-if="burnZero" type="error" @click="emit('continue')">烧录全部</n-button>
+            <n-button v-else type="success" @click="emit('skip')">跳过 0x0 地址烧录</n-button>
+          </template>
         </n-flex>
       </template>
     </n-card>
@@ -53,9 +62,12 @@ import {
 } from 'naive-ui';
 import { Warning24Filled } from '@vicons/fluent';
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   show: boolean;
-}>();
+  mode?: 'partition' | 'hex';
+}>(), {
+  mode: 'partition',
+});
 
 const emit = defineEmits<{
   continue: [];

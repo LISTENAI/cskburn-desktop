@@ -7,8 +7,9 @@
     <app-settings v-model:show="settingsShown" />
     <auto-updater />
     <error-dialog v-model:show="errorDialogShown" :failure :output :header-title="errorDialogTitle" />
-    <zero-address-confirm :show="zeroConfirmShown" @continue="() => resolveZeroConfirm('continue')"
-      @skip="() => resolveZeroConfirm('skip')" @cancel="() => resolveZeroConfirm('cancel')" />
+    <zero-address-confirm :show="zeroConfirmShown" :mode="zeroConfirmMode"
+      @continue="() => resolveZeroConfirm('continue')" @skip="() => resolveZeroConfirm('skip')"
+      @cancel="() => resolveZeroConfirm('cancel')" />
 
     <n-spin :show="busyForInfo || rebootingToRecovery" :style="{ width: 'fit-content' }">
       <n-flex vertical>
@@ -145,7 +146,7 @@ import { confirm } from '@tauri-apps/plugin-dialog';
 import { List16Regular, Settings16Filled } from '@vicons/fluent';
 
 import { MODELS, normalizeModelName } from '@/utils/model';
-import type { IFlashImage } from '@/utils/images';
+import type { IFlashImage, IPartition } from '@/utils/images';
 import { cskburn, CSKBurnTerminatedError, CSKBurnUnnormalExitError, DEFAULT_BAUD_RATE } from '@/utils/cskburn';
 import {
   ADBTransferTerminatedError,
@@ -218,7 +219,7 @@ const readyToFlash = computed(() =>
   !(selectedPort.value.type === 'serial' && selectedChip.value == null) &&
   !(selectedPort.value.type === 'adb' && selectedPort.value.state !== 'RECOVERY') &&
   images.value.length > 0 &&
-  (hexImage.value != null || partitions.value.some((p) => p.enabled)) &&
+  partitions.value.some((p) => p.enabled) &&
   !hasError.value);
 
 const readyToFetchInfo = computed(() =>
@@ -369,47 +370,56 @@ watch(lpkChip, (chip) => {
   }
 });
 
+function checkPartition(
+  partition: IPartition,
+  index: number,
+  all: IPartition[],
+): string | undefined {
+  if (!partition.enabled) {
+    return undefined;
+  }
+
+  if (partition.invalidReason) {
+    return partition.invalidReason;
+  }
+
+  const start = partition.addr;
+  const end = start + partition.file.size;
+
+  for (const [otherIndex, other] of all.entries()) {
+    if (otherIndex === index || !other.enabled || other.invalidReason) {
+      continue;
+    }
+
+    const otherStart = other.addr;
+    const otherEnd = otherStart + other.file.size;
+
+    if (!(start >= otherEnd || end <= otherStart)) {
+      return `与分区 #${otherIndex + 1} 重叠`;
+    }
+  }
+
+  if (start % 4096 !== 0) {
+    return '地址未 4K 对齐';
+  }
+
+  if (flashSize.value != null && end > flashSize.value) {
+    return '超出 Flash 大小';
+  }
+}
+
 const errors = computed(() => {
   if (hexImage.value) {
-    // For now, we can only roughly compare the total size of all sections
-    // against the flash size. The actual end address of the image is unknown,
-    // as there's no straightforward way to compute relative offsets from
-    // absolute RAM addresses.
-    if (flashSize.value != null && hexImage.value.file.size > flashSize.value) {
-      return ['超出 Flash 大小'];
-    } else {
-      return [];
+    for (const [index, partition] of partitions.value.entries()) {
+      const err = checkPartition(partition, index, partitions.value);
+      if (err) {
+        return [err];
+      }
     }
+    return [];
   } else {
-    return partitions.value.map((partition, index) => {
-      if (!partition.enabled) {
-        return undefined;
-      }
-
-      const start = partition.addr;
-      const end = start + partition.file.size;
-
-      for (const [otherIndex, other] of partitions.value.entries()) {
-        if (otherIndex === index || !other.enabled) {
-          continue;
-        }
-
-        const otherStart = other.addr;
-        const otherEnd = otherStart + other.file.size;
-
-        if (!(start >= otherEnd || end <= otherStart)) {
-          return `与分区 #${otherIndex + 1} 重叠`;
-        }
-      }
-
-      if (start % 4096 !== 0) {
-        return '地址未 4K 对齐';
-      }
-
-      if (flashSize.value != null && end > flashSize.value) {
-        return '超出 Flash 大小';
-      }
-    });
+    return partitions.value.map((partition, index) =>
+      checkPartition(partition, index, partitions.value));
   }
 });
 
@@ -418,11 +428,14 @@ const hasError = computed(() => errors.value.some((error) => !!error));
 const outputShown = ref(false);
 
 type ZeroConfirmAction = 'continue' | 'skip' | 'cancel';
+type ZeroConfirmMode = 'partition' | 'hex';
 
 const zeroConfirmShown = ref(false);
+const zeroConfirmMode = ref<ZeroConfirmMode>('partition');
 let zeroConfirmResolve: ((action: ZeroConfirmAction) => void) | null = null;
 
-function promptZeroAddress(): Promise<ZeroConfirmAction> {
+function promptZeroAddress(mode: ZeroConfirmMode): Promise<ZeroConfirmAction> {
+  zeroConfirmMode.value = mode;
   zeroConfirmShown.value = true;
   return new Promise((resolve) => {
     zeroConfirmResolve = resolve;
@@ -455,10 +468,11 @@ async function startFlash(): Promise<void> {
     return;
   }
 
-  if (isAdbPort.value && !hexImage.value) {
+  if (isAdbPort.value) {
     const zeroEnabled = partitions.value.some((p) => p.enabled && p.addr === 0);
     if (zeroEnabled) {
-      const action = await promptZeroAddress();
+      const mode: ZeroConfirmMode = hexImage.value ? 'hex' : 'partition';
+      const action = await promptZeroAddress(mode);
       if (action === 'cancel') {
         return;
       }
@@ -530,11 +544,6 @@ async function startFlashOnSerial(path: string, chip: string, signal: AbortSigna
 }
 
 async function startFlashOnAdb(identifier: string, signal: AbortSignal): Promise<void> {
-  if (hexImage.value) {
-    message.error('ADB 模式暂不支持烧录 HEX 文件');
-    return;
-  }
-
   output.value.push(`设备: ${identifier}`);
 
   try {

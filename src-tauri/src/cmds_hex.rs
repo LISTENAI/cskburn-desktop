@@ -1,5 +1,10 @@
 use ihex::{Reader, Record};
-use std::fs::read_to_string;
+use scopeguard::{guard, ScopeGuard};
+use std::fs::{metadata, read_to_string};
+use std::path::Path;
+use std::time::UNIX_EPOCH;
+
+use crate::file::TmpFile;
 
 const FLASH_ALIGN: u32 = 4 * 1024;
 
@@ -10,39 +15,49 @@ fn align_down(addr: u32, align: u32) -> u32 {
 #[derive(serde::Serialize)]
 pub struct HexSection {
     address: u32,
-    size: u32,
+    file: TmpFile,
+}
+
+struct RawSection {
+    address: u32,
+    data: Vec<u8>,
 }
 
 struct HexState {
     extended: u32,
     address: u32,
-    size: u32,
+    buffer: Vec<u8>,
 }
 
 impl HexState {
-    fn push_section(&mut self, sections: &mut Vec<HexSection>) {
-        if self.size == 0 {
+    fn push_section(&mut self, sections: &mut Vec<RawSection>) {
+        if self.buffer.is_empty() {
             return;
         }
 
         if let Some(last) = sections.last_mut() {
-            if align_down(self.address, FLASH_ALIGN) <= last.address + last.size {
-                last.size = (self.address + self.size) - last.address;
-                self.size = 0;
+            let last_end = last.address + last.data.len() as u32;
+            if align_down(self.address, FLASH_ALIGN) <= last_end {
+                if self.address > last_end {
+                    last.data.resize(
+                        last.data.len() + (self.address - last_end) as usize,
+                        0xFF,
+                    );
+                }
+                last.data.append(&mut self.buffer);
                 return;
             }
         }
 
-        sections.push(HexSection {
+        sections.push(RawSection {
             address: self.address,
-            size: self.size,
+            data: std::mem::take(&mut self.buffer),
         });
-
-        self.size = 0;
     }
 
-    fn switch_extended(&mut self, sections: &mut Vec<HexSection>, next_extend: u32) {
-        if self.address + self.size == next_extend {
+    fn switch_extended(&mut self, sections: &mut Vec<RawSection>, next_extend: u32) {
+        let current_end = self.address + self.buffer.len() as u32;
+        if current_end == next_extend {
             self.extended = next_extend;
         } else {
             self.push_section(sections);
@@ -53,38 +68,78 @@ impl HexState {
 }
 
 #[tauri::command]
-pub fn read_hex(path: String) -> crate::Result<Vec<HexSection>> {
-    let content = read_to_string(path).map_err(|e| crate::Error::Io(e))?;
+pub fn read_hex<R: tauri::Runtime>(
+    _app: tauri::AppHandle<R>,
+    resolver: tauri::State<'_, tauri::path::PathResolver<R>>,
+    path: String,
+) -> crate::Result<Vec<HexSection>> {
+    let basename = Path::new(&path)
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or("hex")
+        .to_string();
+    let mtime = metadata(&path)?
+        .modified()?
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0);
+
+    let content = read_to_string(&path).map_err(crate::Error::Io)?;
     let reader = Reader::new(&content);
 
-    let mut sections = Vec::new();
+    let mut raw_sections: Vec<RawSection> = Vec::new();
     let mut state = HexState {
         extended: 0,
         address: 0,
-        size: 0,
+        buffer: Vec::new(),
     };
 
     for record in reader {
         match record {
             Ok(Record::Data { offset, value }) => {
                 let address = state.extended + offset as u32;
-                if state.address + state.size != address {
-                    state.push_section(&mut sections);
+                let current_end = state.address + state.buffer.len() as u32;
+                if current_end != address {
+                    state.push_section(&mut raw_sections);
                     state.address = address;
                 }
-                state.size += value.len() as u32;
+                state.buffer.extend_from_slice(&value);
             }
             Ok(Record::EndOfFile) => {
-                state.push_section(&mut sections);
+                state.push_section(&mut raw_sections);
             }
             Ok(Record::ExtendedSegmentAddress(segment)) => {
-                state.switch_extended(&mut sections, (segment as u32) << 4);
+                state.switch_extended(&mut raw_sections, (segment as u32) << 4);
             }
             Ok(Record::ExtendedLinearAddress(segment)) => {
-                state.switch_extended(&mut sections, (segment as u32) << 16);
+                state.switch_extended(&mut raw_sections, (segment as u32) << 16);
             }
-            _ => {}
+            Ok(Record::StartSegmentAddress { .. }) | Ok(Record::StartLinearAddress(_)) => {
+                // Start address records describe execution entry; irrelevant for flashing.
+            }
+            Err(e) => {
+                return Err(crate::Error::InvalidHex(e.to_string()));
+            }
         }
+    }
+
+    let mut tmp_files = Vec::new();
+    let mut sections = Vec::with_capacity(raw_sections.len());
+
+    for raw in raw_sections {
+        let pseudo_name = format!("{}.{:08x}.bin", basename, raw.address);
+        let file = TmpFile::from(&resolver, pseudo_name, raw.data, mtime)?;
+        tmp_files.push(guard(file.clone(), |file| {
+            let _ = file.free();
+        }));
+        sections.push(HexSection {
+            address: raw.address,
+            file,
+        });
+    }
+
+    for g in tmp_files {
+        ScopeGuard::into_inner(g);
     }
 
     Ok(sections)

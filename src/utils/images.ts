@@ -19,6 +19,7 @@ export interface IPartition {
   addr: number;
   file: IFileRef;
   enabled: boolean;
+  invalidReason?: string;
 }
 
 export async function readImages(paths: string[]): Promise<IFlashImage[]> {

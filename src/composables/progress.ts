@@ -61,8 +61,8 @@ export function useFlashProgress(images: Ref<IFlashImage[]>, status: Ref<FlashSt
       if (index >= file.sections.length) {
         return 0;
       }
-      const wrote = sum(file.sections.slice(0, index), (section) => section.size);
-      const writing = file.sections[index].size * (current.value.progress ?? 0);
+      const wrote = sum(file.sections.slice(0, index), (section) => section.file.size);
+      const writing = file.sections[index].file.size * (current.value.progress ?? 0);
       return (wrote + writing) / file.size;
     } else {
       if (index >= partitions.value.length) {

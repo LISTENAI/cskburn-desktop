@@ -5,6 +5,8 @@ import { sum } from 'radash';
 import { plainToInstance, Type } from 'class-transformer';
 import pMap from 'p-map';
 
+import { UserError } from '@/userError';
+
 import type { IPartition } from './images';
 import { readLpk } from './readLpk';
 import { readHex, type ISection } from './readHex';
@@ -111,9 +113,27 @@ export class HexFile extends BaseFile {
   static async from(path: string): Promise<HexFile> {
     const name = await basename(path);
     const { mtime } = await stat(path);
-    const sections = await readHex(path);
-    const size = sum(sections, (section) => section.size);
-    return plainToInstance(HexFile, { path, name, size, mtime: mtime!, sections });
+
+    let sections: ISection[];
+    try {
+      sections = await readHex(path);
+    } catch (e) {
+      const detail = e instanceof Error ? e.message : String(e);
+      throw new UserError('HEX 文件解析失败', detail);
+    }
+
+    const size = sum(sections, (section) => section.file.size);
+    return plainToInstance(HexFile, {
+      path,
+      name,
+      size,
+      mtime: mtime!,
+      sections,
+    });
+  }
+
+  async free(): Promise<void> {
+    await pMap(this.sections, async (section) => await section.file.free());
   }
 }
 
