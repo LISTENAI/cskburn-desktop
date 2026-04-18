@@ -2,7 +2,7 @@ import { Child, Command } from '@tauri-apps/plugin-shell';
 
 type UnwatchFn = () => void;
 
-const DEVICE_POLL_INTERVAL = 2_000;
+const TRACK_DEVICES_RETRY_INTERVAL = 2_000;
 
 export async function checkVersion(): Promise<string> {
   const { stdout } = await Command.create('adb', ['version']).execute();
@@ -61,27 +61,78 @@ export async function watchDevices(cb: (devices: IDevice[]) => void): Promise<Un
   }
 
   let stopped = false;
-  let timer: ReturnType<typeof setTimeout> | undefined;
+  let child: Child | undefined;
+  let retryTimer: ReturnType<typeof setTimeout> | undefined;
+  let refreshing = false;
+  let pending = false;
 
-  async function poll() {
-    if (stopped) return;
+  async function refresh() {
+    if (refreshing) {
+      pending = true;
+      return;
+    }
+    refreshing = true;
     try {
-      const devices = await listDevices();
-      if (!stopped) cb(devices);
+      do {
+        pending = false;
+        const devices = await listDevices();
+        if (stopped) return;
+        cb(devices);
+      } while (pending && !stopped);
     } catch (e) {
       console.warn('Failed to list ADB devices:', e);
       if (!stopped) cb([]);
-    }
-    if (!stopped) {
-      timer = setTimeout(poll, DEVICE_POLL_INTERVAL);
+    } finally {
+      refreshing = false;
     }
   }
 
-  timer = setTimeout(poll, DEVICE_POLL_INTERVAL);
+  function start() {
+    if (stopped) return;
+
+    const command = Command.create('adb', ['track-devices']);
+
+    command.stdout.on('data', () => { void refresh(); });
+    command.stderr.on('data', (data) => {
+      console.warn('adb track-devices stderr:', data);
+    });
+
+    command.once('close', () => {
+      child = undefined;
+      if (!stopped) {
+        retryTimer = setTimeout(start, TRACK_DEVICES_RETRY_INTERVAL);
+      }
+    });
+
+    command.once('error', (err) => {
+      console.warn('adb track-devices error:', err);
+    });
+
+    command.spawn()
+      .then((c) => {
+        if (stopped) {
+          void c.kill();
+        } else {
+          child = c;
+        }
+      })
+      .catch((err) => {
+        console.warn('Failed to spawn adb track-devices:', err);
+        if (!stopped) {
+          retryTimer = setTimeout(start, TRACK_DEVICES_RETRY_INTERVAL);
+        }
+      });
+  }
+
+  start();
 
   return () => {
     stopped = true;
-    clearTimeout(timer);
+    clearTimeout(retryTimer);
+    if (child) {
+      void child.kill();
+      child = undefined;
+    }
   };
 }
 
