@@ -1,5 +1,5 @@
-use rand::distributions::Alphanumeric;
-use rand::{thread_rng, Rng};
+use rand::distr::Alphanumeric;
+use rand::RngExt;
 use std::io::{Error, ErrorKind};
 use std::path::PathBuf;
 use tauri::path::{BaseDirectory, PathResolver};
@@ -27,7 +27,7 @@ fn ensure_tmp_dir<R: tauri::Runtime>(resolver: &PathResolver<R>) -> Result<PathB
 }
 
 fn generate_tmp_file_name() -> String {
-    let mut rng = thread_rng();
+    let mut rng = rand::rng();
     let name: String = (0..10).map(|_| rng.sample(Alphanumeric) as char).collect();
     format!("{}.bin", name)
 }
