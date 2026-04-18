@@ -1,9 +1,18 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 
 use futures_util::StreamExt;
 use tauri::async_runtime::{spawn, JoinHandle};
 
 use super::{SerialPortEventHandler, SerialPortWatcher};
+
+// macOS USB-to-serial drivers create the tty node a short moment after the
+// raw USB device is enumerated, so the hotplug event fires before
+// `available_ports()` reports the new port. Re-query once more after this
+// delay so attach events are picked up without needing a second trigger.
+const ATTACH_SETTLE_DELAY: Duration = Duration::from_millis(500);
 
 pub struct SerialPortHotplugWatcher {
     event_handler: Arc<Mutex<dyn SerialPortEventHandler>>,
@@ -37,6 +46,8 @@ impl SerialPortWatcher for SerialPortHotplugWatcher {
             };
 
             while watch.next().await.is_some() {
+                trigger(&event_handler);
+                tokio::time::sleep(ATTACH_SETTLE_DELAY).await;
                 trigger(&event_handler);
             }
         });

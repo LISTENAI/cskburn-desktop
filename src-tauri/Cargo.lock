@@ -536,6 +536,7 @@ dependencies = [
  "tauri-plugin-store",
  "tauri-plugin-updater",
  "thiserror 1.0.69",
+ "tokio",
  "windows 0.56.0",
  "zip 2.4.2",
 ]
