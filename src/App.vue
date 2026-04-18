@@ -6,7 +6,7 @@
   }">
     <app-settings v-model:show="settingsShown" />
     <auto-updater />
-    <error-dialog v-model:show="errorDialogShown" :failure :header-title="errorDialogTitle" />
+    <error-dialog v-model:show="errorDialogShown" :failure :output :header-title="errorDialogTitle" />
 
     <n-spin :show="busyForInfo || rebootingToRecovery" :style="{ width: 'fit-content' }">
       <n-flex vertical>

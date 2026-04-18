@@ -43,6 +43,9 @@
 
       <template #footer>
         <n-flex justify="end">
+          <n-button v-if="output?.length" secondary size="medium" :loading="saving" @click="saveLog">
+            保存日志
+          </n-button>
           <n-button secondary size="medium" @click="close">关闭</n-button>
         </n-flex>
       </template>
@@ -51,7 +54,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import {
   NButton,
   NCard,
@@ -61,8 +64,11 @@ import {
   NIcon,
   NModal,
   NTag,
+  useMessage,
 } from 'naive-ui';
 import { ErrorCircle24Filled } from '@vicons/fluent';
+import { save } from '@tauri-apps/plugin-dialog';
+import { writeTextFile } from '@tauri-apps/plugin-fs';
 
 import SelectableText from '@/components/common/SelectableText.vue';
 
@@ -71,10 +77,14 @@ import type { IFlashFailure } from '@/composables/useFlashSession';
 
 const props = defineProps<{
   failure: IFlashFailure | null;
+  output?: string[];
   headerTitle?: string;
 }>();
 
 const show = defineModel<boolean>('show', { default: false });
+
+const message = useMessage();
+const saving = ref(false);
 
 const info = computed(() => lookupErrorInfo(props.failure?.code));
 
@@ -82,6 +92,53 @@ const headerTitle = computed(() => props.headerTitle ?? '烧录失败');
 
 function close() {
   show.value = false;
+}
+
+function pad(n: number): string {
+  return n.toString().padStart(2, '0');
+}
+
+function defaultFileName(): string {
+  const now = new Date();
+  const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`
+    + `-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+  return `cskburn-${stamp}.log`;
+}
+
+function buildLogContent(): string {
+  const lines: string[] = [];
+  lines.push(`时间: ${new Date().toLocaleString('zh-CN', { hour12: false })}`);
+  if (props.failure?.code) {
+    lines.push(`错误码: ${props.failure.code}`);
+  }
+  if (props.failure?.message) {
+    lines.push(`错误信息: ${props.failure.message}`);
+  }
+  lines.push('');
+  lines.push('--- 烧录输出 ---');
+  lines.push(...(props.output ?? []));
+  return lines.join('\n');
+}
+
+async function saveLog(): Promise<void> {
+  saving.value = true;
+  try {
+    const path = await save({
+      title: '保存烧录日志',
+      defaultPath: defaultFileName(),
+      filters: [{ name: '日志文件', extensions: ['log', 'txt'] }],
+    });
+    if (!path) {
+      return;
+    }
+    await writeTextFile(path, buildLogContent());
+    message.success('日志已保存');
+  } catch (e) {
+    console.error(e);
+    message.error(`保存日志失败: ${e}`);
+  } finally {
+    saving.value = false;
+  }
 }
 </script>
 

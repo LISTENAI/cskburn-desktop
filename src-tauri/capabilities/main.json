@@ -15,8 +15,10 @@
     "core:window:allow-set-title",
     "dialog:allow-confirm",
     "dialog:allow-open",
+    "dialog:allow-save",
     "fs:default",
     "fs:allow-stat",
+    "fs:allow-write-text-file",
     {
       "identifier": "fs:allow-appcache-write",
       "allow": [
