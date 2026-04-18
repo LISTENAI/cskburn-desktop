@@ -13,7 +13,23 @@ mod serialport_watcher;
 pub use error::Error;
 type Result<T> = std::result::Result<T, Error>;
 
+#[cfg(target_os = "macos")]
+fn fix_path() {
+    let mut parts: Vec<String> = vec!["/opt/homebrew/bin".into(), "/usr/local/bin".into()];
+    if let Ok(home) = std::env::var("HOME") {
+        parts.push(format!("{home}/Library/Android/sdk/platform-tools"));
+    }
+    if let Ok(current) = std::env::var("PATH") {
+        parts.push(current);
+    }
+    std::env::set_var("PATH", parts.join(":"));
+}
+
+#[cfg(not(target_os = "macos"))]
+fn fix_path() {}
+
 fn main() {
+    fix_path();
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
