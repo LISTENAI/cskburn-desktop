@@ -1,4 +1,4 @@
-mod poll;
+mod hotplug;
 
 pub trait SerialPortEventHandler: Send + 'static {
     fn handle_event(&mut self);
@@ -14,4 +14,4 @@ pub trait SerialPortWatcher {
     fn unwatch(&mut self) -> ();
 }
 
-pub type SerialPortWatcherImpl = poll::SerialPortPollWatcher;
+pub type SerialPortWatcherImpl = hotplug::SerialPortHotplugWatcher;
