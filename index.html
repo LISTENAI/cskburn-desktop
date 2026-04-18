@@ -6,10 +6,58 @@
   <link rel="icon" type="image/svg+xml" href="/vite.svg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>cskburn desktop</title>
+  <style>
+    #unsupported {
+      position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+      padding: 24px; box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #fff; color: #333; z-index: 9999;
+    }
+    #unsupported .box { max-width: 480px; text-align: center; line-height: 1.6; }
+    #unsupported h1 { font-size: 18px; margin: 0 0 12px; }
+    #unsupported p { font-size: 14px; margin: 8px 0; }
+    #unsupported ul { font-size: 13px; text-align: left; display: inline-block; margin: 8px 0; color: #666; }
+    @media (prefers-color-scheme: dark) {
+      #unsupported { background: #1e1e1e; color: #eee; }
+      #unsupported ul { color: #aaa; }
+    }
+  </style>
 </head>
 
 <body>
   <div id="app"></div>
+  <script>
+    // Gate the app on a minimum WebView level matching README system requirements.
+    // Inline + ES5 so it runs even if the module script below fails to parse.
+    (function () {
+      var ok =
+        typeof Promise === 'function' &&
+        typeof globalThis !== 'undefined' &&
+        typeof structuredClone === 'function' &&
+        typeof Array.prototype.at === 'function' &&
+        typeof Object.hasOwn === 'function';
+      if (ok) return;
+      function render() {
+        var div = document.createElement('div');
+        div.id = 'unsupported';
+        div.innerHTML = ''
+          + '<div class="box">'
+          + '<h1>当前系统版本过低，无法运行此软件</h1>'
+          + '<p>请将您的操作系统或 WebView 运行时升级到以下最低版本：</p>'
+          + '<ul>'
+          + '<li>Windows 10 或以上，并保持 WebView2 运行时为最新版本</li>'
+          + '<li>Ubuntu 22.04 或以上</li>'
+          + '<li>macOS 13 (Ventura) 或以上</li>'
+          + '</ul>'
+          + '</div>';
+        document.body.appendChild(div);
+      }
+      if (document.body) render();
+      else document.addEventListener('DOMContentLoaded', render);
+      // Swallow errors from the module script so only the message remains.
+      window.addEventListener('error', function (e) { e.preventDefault(); }, true);
+    })();
+  </script>
   <script type="module" src="/src/main.ts"></script>
 </body>
 

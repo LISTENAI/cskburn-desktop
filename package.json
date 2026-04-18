@@ -21,6 +21,7 @@
     "@tauri-apps/plugin-updater": "^2.10.1",
     "@vueuse/core": "^14.2.1",
     "class-transformer": "^0.5.1",
+    "core-js": "^3.49.0",
     "naive-ui": "^2.44.1",
     "p-map": "^7.0.4",
     "p-queue": "^9.1.2",
@@ -36,6 +37,7 @@
     "@vue/tsconfig": "^0.9.1",
     "autoprefixer": "^10.5.0",
     "eslint": "^10.2.1",
+    "eslint-plugin-compat": "^7.0.1",
     "eslint-plugin-vue": "^10.8.0",
     "sass": "^1.99.0",
     "typescript": "^6.0.3",
@@ -45,7 +47,8 @@
     "vue-tsc": "^3.2.6"
   },
   "browserslist": [
-    "> 1%",
-    "last 2 versions"
+    "Chrome >= 108",
+    "Edge >= 108",
+    "Safari >= 15.4"
   ]
 }

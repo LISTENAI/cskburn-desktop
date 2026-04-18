@@ -1,3 +1,4 @@
+import './polyfills';
 import 'reflect-metadata';
 
 import { createApp } from 'vue';

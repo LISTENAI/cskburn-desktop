@@ -15,6 +15,14 @@ export default defineConfig(async () => ({
     vue(),
   ],
 
+  // Match syntax target to the oldest WebView we support per README
+  // (macOS 13 Ventura ≈ Safari 16, Ubuntu 22.04 WebKitGTK 2.36 ≈ Safari 15.4,
+  // Win10 WebView2). Runtime APIs newer than ES2022 must be polyfilled
+  // explicitly — see src/polyfills.ts.
+  build: {
+    target: ['es2022', 'chrome108', 'safari15.4', 'edge108'],
+  },
+
   css: {
     postcss: {
       plugins: [

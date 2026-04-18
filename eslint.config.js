@@ -1,11 +1,24 @@
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import pluginVue from 'eslint-plugin-vue';
+import pluginCompat from 'eslint-plugin-compat';
 
 export default [
   js.configs.recommended,
   ...tseslint.configs.recommended,
   ...pluginVue.configs['flat/essential'],
+  {
+    ...pluginCompat.configs['flat/recommended'],
+    settings: {
+      // Runtime APIs we polyfill in src/polyfills.ts — declare them here
+      // so eslint-plugin-compat stops flagging their use in source files.
+      // Keep this list in sync with src/polyfills.ts.
+      lintAllEsApis: true,
+      polyfills: [
+        'Promise.withResolvers',
+      ],
+    },
+  },
   {
     files: ['**/*.vue'],
     languageOptions: {

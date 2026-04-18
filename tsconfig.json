@@ -10,6 +10,11 @@
       "vite/client",
       "naive-ui/volar",
     ],
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable",
+    ],
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
   },
