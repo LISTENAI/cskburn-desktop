@@ -13,7 +13,20 @@ fn align_down(addr: u32, align: u32) -> u32 {
 }
 
 #[derive(serde::Serialize)]
-pub struct HexSection {
+pub struct HexMeta {
+    sections: Vec<SectionMeta>,
+}
+
+#[derive(serde::Serialize)]
+pub struct SectionMeta {
+    address: u32,
+    name: String,
+    size: u32,
+    mtime: u64,
+}
+
+#[derive(serde::Serialize)]
+pub struct ExtractedSection {
     address: u32,
     file: TmpFile,
 }
@@ -67,24 +80,19 @@ impl HexState {
     }
 }
 
-#[tauri::command]
-pub fn read_hex<R: tauri::Runtime>(
-    _app: tauri::AppHandle<R>,
-    resolver: tauri::State<'_, tauri::path::PathResolver<R>>,
-    path: String,
-) -> crate::Result<Vec<HexSection>> {
-    let basename = Path::new(&path)
+fn parse_hex(path: &str) -> crate::Result<(Vec<RawSection>, u64, String)> {
+    let basename = Path::new(path)
         .file_name()
         .and_then(|s| s.to_str())
         .unwrap_or("hex")
         .to_string();
-    let mtime = metadata(&path)?
+    let mtime = metadata(path)?
         .modified()?
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_millis() as u64)
         .unwrap_or(0);
 
-    let content = read_to_string(&path).map_err(crate::Error::Io)?;
+    let content = read_to_string(path).map_err(crate::Error::Io)?;
     let reader = Reader::new(&content);
 
     let mut raw_sections: Vec<RawSection> = Vec::new();
@@ -123,16 +131,48 @@ pub fn read_hex<R: tauri::Runtime>(
         }
     }
 
+    Ok((raw_sections, mtime, basename))
+}
+
+fn section_name(basename: &str, address: u32) -> String {
+    format!("{}.{:08x}.bin", basename, address)
+}
+
+#[tauri::command]
+pub fn inspect_hex(path: String) -> crate::Result<HexMeta> {
+    let (raw_sections, mtime, basename) = parse_hex(&path)?;
+
+    let sections = raw_sections
+        .into_iter()
+        .map(|raw| SectionMeta {
+            address: raw.address,
+            name: section_name(&basename, raw.address),
+            size: raw.data.len() as u32,
+            mtime,
+        })
+        .collect();
+
+    Ok(HexMeta { sections })
+}
+
+#[tauri::command]
+pub fn extract_hex<R: tauri::Runtime>(
+    _app: tauri::AppHandle<R>,
+    resolver: tauri::State<'_, tauri::path::PathResolver<R>>,
+    path: String,
+) -> crate::Result<Vec<ExtractedSection>> {
+    let (raw_sections, mtime, basename) = parse_hex(&path)?;
+
     let mut tmp_files = Vec::new();
     let mut sections = Vec::with_capacity(raw_sections.len());
 
     for raw in raw_sections {
-        let pseudo_name = format!("{}.{:08x}.bin", basename, raw.address);
+        let pseudo_name = section_name(&basename, raw.address);
         let file = TmpFile::from(&resolver, pseudo_name, raw.data, mtime)?;
         tmp_files.push(guard(file.clone(), |file| {
             let _ = file.free();
         }));
-        sections.push(HexSection {
+        sections.push(ExtractedSection {
             address: raw.address,
             file,
         });

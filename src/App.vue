@@ -146,7 +146,7 @@ import { confirm } from '@tauri-apps/plugin-dialog';
 import { List16Regular, Settings16Filled } from '@vicons/fluent';
 
 import { MODELS, normalizeModelName } from '@/utils/model';
-import type { IFlashImage, IPartition } from '@/utils/images';
+import { extractImages, type CleanupFn, type IFlashImage, type IPartition } from '@/utils/images';
 import { cskburn, CSKBurnTerminatedError, CSKBurnUnnormalExitError, DEFAULT_BAUD_RATE } from '@/utils/cskburn';
 import {
   ADBTransferTerminatedError,
@@ -159,6 +159,7 @@ import {
   rebootToSystem,
 } from '@/utils/adb';
 import { cleanUpTmpFiles, computeMd5 as computeLocalMd5 } from '@/utils/file';
+import { UserError } from '@/userError';
 
 import { busyOn } from '@/composables/busyOn';
 import { useAvailableAdbDevices, useAvailableSerialPorts } from '@/composables/devices';
@@ -497,15 +498,7 @@ async function startFlash(): Promise<void> {
 async function startFlashOnSerial(path: string, chip: string, signal: AbortSignal): Promise<void> {
   const args = ['--verify-all'];
   const enabledIndices: number[] = [];
-  if (hexImage.value) {
-    args.push(hexImage.value.file.path);
-  } else {
-    for (const [index, partition] of partitions.value.entries()) {
-      if (!partition.enabled) continue;
-      enabledIndices.push(index);
-      args.push(partition.addr.toString(), partition.file.path);
-    }
-  }
+  let cleanup: CleanupFn | undefined;
 
   output.value.push(`* port: ${path}`);
   output.value.push(`* baud: ${baudrate.value}`);
@@ -513,6 +506,18 @@ async function startFlashOnSerial(path: string, chip: string, signal: AbortSigna
   status.value = FlashStatus.CONNECTING;
 
   try {
+    if (hexImage.value) {
+      args.push(hexImage.value.file.path);
+    } else {
+      const extraction = await extractImages(images.value);
+      cleanup = extraction.cleanup;
+      for (const [index, partition] of extraction.partitions.entries()) {
+        if (!partition.enabled) continue;
+        enabledIndices.push(index);
+        args.push(partition.addr.toString(), partition.file.path);
+      }
+    }
+
     await cskburn(path, baudrate.value, chip, args, {
       signal,
       onOutput(line) {
@@ -539,12 +544,22 @@ async function startFlashOnSerial(path: string, chip: string, signal: AbortSigna
 
     await handleFlashSuccess();
   } catch (e) {
-    await handleFlashError(e, signal, CSKBurnTerminatedError, CSKBurnUnnormalExitError);
+    if (e instanceof UserError) {
+      status.value = FlashStatus.ERROR;
+      failure.value = { code: null, message: e.details ?? e.summary };
+      output.value.push(`[烧录失败: ${e.summary}]`);
+    } else {
+      await handleFlashError(e, signal, CSKBurnTerminatedError, CSKBurnUnnormalExitError);
+    }
+  } finally {
+    await cleanup?.();
   }
 }
 
 async function startFlashOnAdb(identifier: string, signal: AbortSignal): Promise<void> {
   output.value.push(`设备: ${identifier}`);
+
+  let cleanup: CleanupFn | undefined;
 
   try {
     output.value.push('[正在获取 Chip ID]');
@@ -554,7 +569,10 @@ async function startFlashOnAdb(identifier: string, signal: AbortSignal): Promise
     const size = await fetchFlashSize(identifier);
     flashInfo.value = size ? { size } : null;
 
-    for (const [index, partition] of partitions.value.entries()) {
+    const extraction = await extractImages(images.value);
+    cleanup = extraction.cleanup;
+
+    for (const [index, partition] of extraction.partitions.entries()) {
       if (!partition.enabled) continue;
       const { addr, file } = partition;
       output.value.push(`[正在烧录分区 #${index + 1}]`);
@@ -594,7 +612,15 @@ async function startFlashOnAdb(identifier: string, signal: AbortSignal): Promise
 
     await handleFlashSuccess();
   } catch (e) {
-    await handleFlashError(e, signal, ADBTransferTerminatedError, ADBTransferUnnormalExitError);
+    if (e instanceof UserError) {
+      status.value = FlashStatus.ERROR;
+      failure.value = { code: null, message: e.details ?? e.summary };
+      output.value.push(`[烧录失败: ${e.summary}]`);
+    } else {
+      await handleFlashError(e, signal, ADBTransferTerminatedError, ADBTransferUnnormalExitError);
+    }
+  } finally {
+    await cleanup?.();
   }
 }
 

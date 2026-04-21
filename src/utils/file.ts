@@ -1,30 +1,24 @@
 import { appCacheDir, basename, join } from '@tauri-apps/api/path';
-import { mkdir, readFile, remove, stat, writeFile } from '@tauri-apps/plugin-fs';
+import { remove, stat } from '@tauri-apps/plugin-fs';
 import { invoke } from '@tauri-apps/api/core';
 import { sum } from 'radash';
 import { plainToInstance, Type } from 'class-transformer';
-import pMap from 'p-map';
 
 import { UserError } from '@/userError';
 
 import type { IPartition } from './images';
-import { readLpk } from './readLpk';
-import { readHex, type ISection } from './readHex';
+import { inspectLpk } from './readLpk';
+import { inspectHex, type ISection } from './readHex';
 import { revealFile } from './revealFile';
 
 const TEMP_DIR = 'unpacked';
 
 export interface IFileRef {
   /**
-   * Real path of the file on the disk.
+   * Real path of the file on the disk. May be empty for refs that only carry
+   * metadata (e.g. a partition inside an LPK that hasn't been extracted yet).
    */
   path: string;
-
-  /**
-   * Path of the container file (for example, a .lpk file) that this file is
-   * extracted from (if any).
-   */
-  containerPath?: string;
 
   /**
    * Display name of the file.
@@ -42,19 +36,9 @@ export interface IFileRef {
   mtime: Date;
 
   /**
-   * Read the content of the file.
-   */
-  content(): Promise<Uint8Array>;
-
-  /**
    * Reveal the file in the file manager.
    */
   reveal(): Promise<void>;
-
-  /**
-   * Free any resources associated with the file.
-   */
-  free: () => Promise<void>;
 }
 
 export async function cleanUpTmpFiles(): Promise<void> {
@@ -70,32 +54,14 @@ export async function computeMd5(path: string): Promise<string> {
   return (await invoke('md5', { path })).toLowerCase();
 }
 
-async function ensureTmpDir(): Promise<string> {
-  const tmpDir = await join(await appCacheDir(), TEMP_DIR);
-  await mkdir(tmpDir, { recursive: true });
-  return tmpDir;
-}
-
-function generateTmpFileName(): string {
-  return `${Math.random().toString(36).substring(2)}.bin`;
-}
-
 abstract class BaseFile implements IFileRef {
   readonly path!: string;
   readonly name!: string;
   readonly size!: number;
   @Type(() => Date) readonly mtime!: Date;
 
-  async content(): Promise<Uint8Array> {
-    return await readFile(this.path);
-  }
-
   async reveal(): Promise<void> {
     await revealFile(this.path);
-  }
-
-  async free(): Promise<void> {
-    // do nothing
   }
 }
 
@@ -108,7 +74,7 @@ export class LocalFile extends BaseFile {
 }
 
 export class HexFile extends BaseFile {
-  readonly sections!: ISection[];
+  sections!: ISection[];
 
   static async from(path: string): Promise<HexFile> {
     const name = await basename(path);
@@ -116,7 +82,7 @@ export class HexFile extends BaseFile {
 
     let sections: ISection[];
     try {
-      sections = await readHex(path);
+      sections = await inspectHex(path);
     } catch (e) {
       const detail = e instanceof Error ? e.message : String(e);
       throw new UserError('HEX 文件解析失败', detail);
@@ -131,47 +97,33 @@ export class HexFile extends BaseFile {
       sections,
     });
   }
-
-  async free(): Promise<void> {
-    await pMap(this.sections, async (section) => await section.file.free());
-  }
 }
 
 export class LpkFile extends BaseFile {
-  readonly chip!: string;
-  readonly partitions!: IPartition[];
+  chip!: string;
+  partitions!: IPartition[];
 
   static async from(path: string): Promise<LpkFile> {
     const name = await basename(path);
     const { size, mtime } = await stat(path);
-    const { chip, partitions } = await readLpk(path);
+    const { chip, partitions } = await inspectLpk(path);
     return plainToInstance(LpkFile, { path, name, size, mtime: mtime!, chip, partitions });
   }
+}
 
-  async free(): Promise<void> {
-    await pMap(this.partitions, async (part) => await part.file.free());
+export class PendingFile extends BaseFile {
+  readonly containerPath!: string;
+  readonly md5?: string;
+
+  async reveal(): Promise<void> {
+    await revealFile(this.containerPath);
   }
 }
 
 export class TmpFile extends BaseFile {
   readonly containerPath?: string;
 
-  static async from(pseudoPath: string, content: Uint8Array, mtime: Date, containerPath?: string): Promise<TmpFile> {
-    const tmpDir = await ensureTmpDir();
-
-    const path = await join(tmpDir, generateTmpFileName());
-    const name = await basename(pseudoPath);
-
-    await writeFile(path, content);
-
-    return plainToInstance(TmpFile, { path, name, size: content.length, mtime, containerPath });
-  }
-
   async reveal(): Promise<void> {
     await revealFile(this.containerPath ?? this.path);
-  }
-
-  async free(): Promise<void> {
-    await remove(this.path);
   }
 }

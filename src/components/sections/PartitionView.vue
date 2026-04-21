@@ -205,7 +205,6 @@ import {
   FolderOpen16Regular,
 } from '@vicons/fluent';
 import { isEmpty } from 'radash';
-import pMap from 'p-map';
 import { open } from '@tauri-apps/plugin-dialog';
 
 import { UserError } from '@/userError';
@@ -251,14 +250,11 @@ async function handleFiles(files: string[]) {
         }
       }
     }
-    const openedHexImage = images.value.find((image) => image.format === 'hex');
     const pendingHexImage = parsed.find((image) => image.format === 'hex');
     if (pendingHexImage) {
       // Only one hex file is allowed
-      await pMap(images.value, (image) => image.file.free());
       images.value = [pendingHexImage];
-    } else if (openedHexImage) {
-      await openedHexImage.file.free();
+    } else if (images.value.some((image) => image.format === 'hex')) {
       images.value = parsed;
     } else {
       images.value = [...images.value, ...parsed];
@@ -288,9 +284,8 @@ const partitions = computed<IPartitionRecord[]>(() => images.value.flatMap((imag
         get enabled() { return image.enabled ?? true },
         set enabled(val: boolean) { image.enabled = val },
         file: image.file,
-        remove: async () => {
+        remove: () => {
           images.value.splice(imageIndex, 1);
-          await image.file.free();
         },
       };
     case 'lpk':
@@ -300,12 +295,10 @@ const partitions = computed<IPartitionRecord[]>(() => images.value.flatMap((imag
         get enabled() { return part.enabled },
         set enabled(val: boolean) { part.enabled = val },
         file: part.file,
-        remove: async () => {
+        remove: () => {
           image.file.partitions.splice(partIndex, 1);
-          await part.file.free();
           if (isEmpty(image.file.partitions)) {
             images.value.splice(imageIndex, 1);
-            await image.file.free();
           }
         },
       }));

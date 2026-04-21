@@ -1,11 +1,12 @@
 import type { Channel } from '@tauri-apps/api/core';
-import type { ISection } from '@/utils/readHex';
-import type { ILpkInfo } from '@/utils/readLpk';
-import type { IPartition } from '@/utils/images';
+import type { IHexMeta, IExtractedSectionRaw } from '@/utils/readHex';
+import type { ILpkMeta, IExtractedPartitionRaw } from '@/utils/readLpk';
 
 declare module '@tauri-apps/api/core' {
-  function invoke(cmd: 'read_hex', args: { path: string }): Promise<ISection[]>;
-  function invoke(cmd: 'read_lpk', args: { path: string }): Promise<ILpkInfo>;
+  function invoke(cmd: 'inspect_hex', args: { path: string }): Promise<IHexMeta>;
+  function invoke(cmd: 'extract_hex', args: { path: string }): Promise<IExtractedSectionRaw[]>;
+  function invoke(cmd: 'inspect_lpk', args: { path: string }): Promise<ILpkMeta>;
+  function invoke(cmd: 'extract_lpk', args: { path: string }): Promise<IExtractedPartitionRaw[]>;
   function invoke(cmd: 'list_ports'): Promise<string[]>;
   function invoke<T>(cmd: 'watch_ports', args: { onEvent: Channel<T> }): Promise<number>;
   function invoke(cmd: 'unwatch_ports', args: { rid: number }): Promise<void>;

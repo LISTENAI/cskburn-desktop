@@ -44,8 +44,10 @@ fn main() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            cmds_hex::read_hex,
-            cmds_lpk::read_lpk,
+            cmds_hex::inspect_hex,
+            cmds_hex::extract_hex,
+            cmds_lpk::inspect_lpk,
+            cmds_lpk::extract_lpk,
             cmds_serialport::list_ports,
             cmds_serialport::watch_ports,
             cmds_serialport::unwatch_ports,
