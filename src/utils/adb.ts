@@ -166,7 +166,7 @@ export async function computeMd5(identifier: string, remote: string): Promise<st
 export async function fetchChipId(identifier: string): Promise<string | null> {
   const output = await executeShell(identifier, ['info', 'sn']);
   const match = output.match(/serial num: ([0-9A-F]+)/i);
-  return match?.[1].toUpperCase() ?? null;
+  return match?.[1] ?? null;
 }
 
 export async function fetchFlashSize(identifier: string): Promise<number | null> {
