@@ -166,6 +166,7 @@ import { useAvailableAdbDevices, useAvailableSerialPorts } from '@/composables/d
 import { FlashStatus } from '@/composables/progress';
 import { useHexImage, usePartitions } from '@/composables/partitions';
 import { useFlashSession } from '@/composables/useFlashSession';
+import { useImageWatchers } from '@/composables/watchImages';
 import { useListen } from '@/composables/tauri/useListen';
 import { bindProgressBar } from '@/composables/tauri/window';
 import { useSettings } from '@/composables/tauri/settings';
@@ -337,6 +338,8 @@ watch(availableAdbDevices, (devices) => {
 
 const hexImage = useHexImage(images);
 const partitions = usePartitions(images);
+
+useImageWatchers(images);
 
 watch(images, () => {
   progress.current = null;
