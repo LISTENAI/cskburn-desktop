@@ -20,9 +20,12 @@
         <n-flex :class="$style.hexFile" vertical align="center" justify="center" :wrap="false"
           :style="{ height: '100%' }">
           <selectable-text :class="$style.name" selectable>{{ hexImage.file.name }}</selectable-text>
-          <n-space>
-            <file-size :class="$style.size" :size="hexImage.file.size" />
-            <span>-</span>
+          <n-space vertical align="center">
+            <n-space>
+              <file-size :class="$style.size" :size="hexImage.file.size" />
+              <span>·</span>
+              <n-time :time="hexImage.file.mtime" />
+            </n-space>
             <template v-if="props.errors[0]">
               <n-text type="error">{{ props.errors[0] }}</n-text>
             </template>
