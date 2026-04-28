@@ -92,12 +92,28 @@ export async function extractImages(images: IFlashImage[]): Promise<IExtractedIm
           const detail = e instanceof Error ? e.message : String(e);
           throw new UserError(`解包 ${image.file.name} 失败`, detail);
         }
-        image.file.partitions.forEach((part, i) => {
-          const tmp = extracted[i];
-          if (!tmp) return;
+        // The UI list may be a strict subset of the manifest because the user
+        // can remove individual rows; positional alignment with the freshly
+        // re-extracted set would silently match the wrong files. Walk
+        // `extracted` with a cursor that advances by entry name so removed
+        // rows are skipped (and still scheduled for cleanup) rather than
+        // shifting the remaining mapping.
+        let cursor = 0;
+        for (const part of image.file.partitions) {
+          while (cursor < extracted.length && extracted[cursor].file.name !== part.file.name) {
+            tmpPaths.push(extracted[cursor].file.path);
+            cursor++;
+          }
+          if (cursor >= extracted.length) break;
+          const tmp = extracted[cursor];
           tmpPaths.push(tmp.file.path);
           partitions.push({ addr: part.addr, file: tmp.file, enabled: part.enabled });
-        });
+          cursor++;
+        }
+        while (cursor < extracted.length) {
+          tmpPaths.push(extracted[cursor].file.path);
+          cursor++;
+        }
       } else if (image.format === 'hex') {
         let extracted: ISection[];
         try {
