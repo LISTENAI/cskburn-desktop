@@ -41,7 +41,13 @@ SUBSYSTEM=="usb", ATTR{idVendor}=="0483", ATTR{idProduct}=="0adb", MODE="0666"
 
 #### macOS
 
-Mac 平台提供 `x86_64` (Intel) 和 `aarch64` (Apple Silicon) 两种架构，可根据需要选择。
+推荐使用 [Homebrew](https://brew.sh) 安装，可自动跟随版本更新：
+
+```bash
+brew install --cask listenai/tap/cskburn-desktop
+```
+
+或手动下载安装。Mac 平台提供 `x86_64` (Intel) 和 `aarch64` (Apple Silicon) 两种架构，可根据需要选择。
 
 1. 下载 DMG 并打开，将 `cskburn desktop.app` 拖入到 Applications 目录
 2. 打开 Applications 目录找到 `cskburn desktop.app`，点击右键菜单的「打开」，在弹出的对话框中选择「打开」
